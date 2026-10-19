@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TopNavbar, type OperationalMode } from './components/TopNavbar';
 import { OperationalBanner } from './components/OperationalBanner';
+import React from 'react';
 import { EventsPanel } from './components/EventsPanel';
 import { mockSectorsData } from './data/mockEvents';
 
