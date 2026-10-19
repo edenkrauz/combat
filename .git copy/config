@@ -1,0 +1,26 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[remote "origin"]
+	url = https://gitlab.rose.internal/red-unit/developers/combat.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+	vscode-merge-base = origin/main
+[branch "AddEvents"]
+	remote = origin
+	merge = refs/heads/AddEvents
+	vscode-merge-base = origin/AddEvents
+[branch "test"]
+	vscode-merge-base = origin/AddEvents
+	remote = origin
+	merge = refs/heads/test
+[branch "backend-init"]
+	remote = origin
+	merge = refs/heads/backend-init
+	vscode-merge-base = origin/backend-init
