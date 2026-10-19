@@ -2,7 +2,8 @@ import type { DbEvent, SectorGroup } from '../types/event';
 import { formatDbEventToItem } from '../types/event';
 
 /**
- * Raw DB event records mirroring the PostgreSQL `events` table (schemas.html).
+ * Raw DB event records mirroring the PostgreSQL `events` table (schemas.html),
+ * extended with geographic coordinates for Leaflet map visualization.
  */
 export const rawMockDbEvents: DbEvent[] = [
   {
@@ -24,6 +25,8 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 85,
     deployed_forces: 4,
+    lat: 32.0224,
+    lng: 34.7516,
     created_at: '2026-10-19T07:38:10Z',
     updated_at: '2026-10-19T07:38:10Z',
   },
@@ -46,6 +49,8 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 75,
     deployed_forces: 2,
+    lat: 32.0831,
+    lng: 34.8210,
     created_at: '2026-10-19T07:18:25Z',
     updated_at: '2026-10-19T07:22:00Z',
   },
@@ -68,6 +73,8 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 50,
     deployed_forces: 3,
+    lat: 32.0289,
+    lng: 34.8315,
     created_at: '2026-10-19T06:55:12Z',
     updated_at: '2026-10-19T07:05:00Z',
   },
@@ -90,6 +97,8 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 80,
     deployed_forces: 6,
+    lat: 32.0722,
+    lng: 34.8115,
     created_at: '2026-10-19T06:42:00Z',
     updated_at: '2026-10-19T06:45:00Z',
   },
@@ -112,6 +121,8 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 45,
     deployed_forces: 1,
+    lat: 31.9845,
+    lng: 34.7432,
     created_at: '2026-10-19T06:15:00Z',
     updated_at: '2026-10-19T06:30:00Z',
   },
@@ -134,6 +145,8 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 25,
     deployed_forces: 2,
+    lat: 32.0915,
+    lng: 34.8452,
     created_at: '2026-10-19T05:50:00Z',
     updated_at: '2026-10-19T06:10:00Z',
   },
@@ -156,6 +169,8 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 55,
     deployed_forces: 2,
+    lat: 32.0950,
+    lng: 34.8780,
     created_at: '2026-10-19T05:30:00Z',
     updated_at: '2026-10-19T05:35:00Z',
   },
@@ -178,9 +193,48 @@ export const rawMockDbEvents: DbEvent[] = [
     blue_death_count: null,
     threat_level: 20,
     deployed_forces: 1,
+    lat: 32.0152,
+    lng: 34.7760,
     created_at: '2026-10-19T05:12:00Z',
     updated_at: '2026-10-19T05:25:00Z',
   },
+  {
+    event_id: 'evt-109',
+    reality_id: 0,
+    version: 1,
+    status: 'open',
+    event_type: 'crowd_alert',
+    is_deleted: false,
+    title: 'התרעת התקהלות ודריכות בירושלים',
+    description: 'דריכות כוחות וסריקות במרחב ירושלים עקב התרעות ביטחוניות.',
+    notes: 'משטרת מחוז ירושלים',
+    sector: 'ירושלים',
+    sector_description: 'ירושלים • מרכז העיר',
+    start_time: '2026-10-19T05:00:00Z',
+    red_injured_count: null,
+    red_death_count: null,
+    blue_injured_count: 0,
+    blue_death_count: null,
+    threat_level: 50,
+    deployed_forces: 4,
+    lat: 31.7767,
+    lng: 35.2155,
+    created_at: '2026-10-19T05:00:00Z',
+    updated_at: '2026-10-19T05:05:00Z',
+  },
+];
+
+/**
+ * Geometric boundary coordinates for the Central Sector ("מרכז"),
+ * matching the orange bounding polygon from the reference image.
+ */
+export const centerSectorPolygon: [number, number][] = [
+  [32.25, 34.82],
+  [32.25, 35.03],
+  [31.85, 35.03],
+  [31.85, 34.68],
+  [32.06, 34.74],
+  [32.25, 34.82],
 ];
 
 export const mockSectorsData: SectorGroup[] = [
