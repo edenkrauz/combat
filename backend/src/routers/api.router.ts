@@ -1,8 +1,7 @@
 import { type Request, type Response, Router } from 'express';
 
+import { EVENT_STATUSES, type EventStatus } from '../types/event.types.ts';
 import {
-  EVENT_STATUSES,
-  type EventStatus,
   getEvent,
   getEvents,
   updateEventStatus,
