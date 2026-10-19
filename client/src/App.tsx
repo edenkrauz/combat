@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { TopNavbar, type OperationalMode } from './components/TopNavbar';
 import { OperationalBanner } from './components/OperationalBanner';
-import React from 'react';
+import { ChecklistTemplatesModal } from './components/ChecklistTemplatesModal';
 import { EventsPanel } from './components/EventsPanel';
 import { mockSectorsData } from './data/mockEvents';
 
 export const App: React.FC = () => {
   const [operationalMode, setOperationalMode] = useState<OperationalMode>('real');
+  const [isChecklistsOpen, setIsChecklistsOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#f3f5f8] flex flex-col font-sans transition-colors dark:bg-slate-950" dir="rtl">
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
       <TopNavbar
         mode={operationalMode}
         onModeChange={setOperationalMode}
+        onOpenChecklists={() => setIsChecklistsOpen(true)}
       />
 
       {/* Operational alert strip directly under the navbar */}
@@ -29,6 +31,12 @@ export const App: React.FC = () => {
           <EventsPanel sectors={mockSectorsData} />
         </div>
       </main>
+
+      {/* Checklist Templates Modal Popup */}
+      <ChecklistTemplatesModal
+        isOpen={isChecklistsOpen}
+        onClose={() => setIsChecklistsOpen(false)}
+      />
     </div>
   );
 };
