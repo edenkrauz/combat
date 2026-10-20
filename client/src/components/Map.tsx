@@ -34,7 +34,7 @@ export const Map: React.FC<MapProps> = ({
 
   return (
     <div
-      className={`relative w-full h-full min-h-[550px] bg-[#f1f5f9] rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden select-none ${className}`}
+      className={`relative isolate w-full h-full min-h-0 bg-[#f1f5f9] rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden select-none ${className}`}
       dir="rtl"
     >
       {/* 1. Leaflet Map DOM Mount Target */}
