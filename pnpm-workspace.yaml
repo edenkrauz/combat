@@ -1,0 +1,7 @@
+packages:
+  - 'client'
+  - 'server'
+
+allowBuilds:
+  esbuild: true
+  pnpm: set this to true or false

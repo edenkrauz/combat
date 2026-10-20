@@ -1,0 +1,16 @@
+{
+  "name": "combat",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter client --filter server dev",
+    "dev:client": "pnpm --filter client dev",
+    "dev:server": "pnpm --filter server dev",
+    "build": "pnpm --recursive run build"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "pnpm": "^12.14.0",
+    "react": "^19.3.1"
+  }
+}
