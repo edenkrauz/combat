@@ -658,8 +658,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       </div>
 
       {/* 6. ACTION BANNER */}
-      <div className="bg-[#eff6ff] border border-blue-100 rounded-xl px-4 py-3.5 flex items-center justify-between gap-4 mb-4">
-        <p className="text-[13px] text-slate-700 leading-normal font-normal">
+      <div className="bg-[#eff6ff] border border-blue-100 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <p className="text-xs text-slate-700 leading-relaxed font-normal flex-1">
           {currentEvent.status === 'open'
             ? 'התחלת טיפול תאפשר ביצוע משימות וסגירת האירוע.'
             : currentEvent.status === 'in_progress'
@@ -668,88 +668,74 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         </p>
 
         {currentEvent.status === 'open' ? (
-          <div className="flex items-center gap-2">
-            <button
-              ref={startButtonRef}
-              type="button"
-              onClick={handleStartHandling}
-              onFocus={() => {
-                setIsStartFocused(true);
-                isStartFocusedRef.current = true;
-              }}
-              onBlur={() => {
-                setIsStartFocused(false);
-                isStartFocusedRef.current = false;
-              }}
-              className={`font-medium text-[13px] px-5 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap focus:outline-none ${
+          <button
+            ref={startButtonRef}
+            type="button"
+            onClick={handleStartHandling}
+            onFocus={() => {
+              setIsStartFocused(true);
+              isStartFocusedRef.current = true;
+            }}
+            onBlur={() => {
+              setIsStartFocused(false);
+              isStartFocusedRef.current = false;
+            }}
+            className={`flex items-center justify-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-lg transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap focus:outline-none ${
+              isStartFocused
+                ? 'bg-slate-900 ring-2 ring-blue-500/80 ring-offset-1 text-white shadow-md'
+                : 'bg-[#131b2e] hover:bg-black active:bg-slate-900 text-white'
+            }`}
+          >
+            <span>התחלת טיפול</span>
+            <kbd
+              className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[11px] font-mono font-medium transition ${
                 isStartFocused
-                  ? 'bg-black ring-4 ring-slate-900/40 ring-offset-2 ring-offset-white shadow-xl scale-[1.03] text-white'
-                  : 'bg-[#131b2e] hover:bg-black active:bg-slate-900 text-white'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'bg-white/20 text-white'
               }`}
             >
-              <span>התחלת טיפול</span>
+              Enter ↵
+            </kbd>
+          </button>
+        ) : currentEvent.status === 'in_progress' ? (
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={() => handleStatusChange('closed')}
+            onFocus={() => {
+              if (currentEvent.status === 'in_progress' && tasks.every((t) => t.completed)) {
+                setIsCloseFocused(true);
+                isCloseFocusedRef.current = true;
+              }
+            }}
+            onBlur={() => {
+              setIsCloseFocused(false);
+              isCloseFocusedRef.current = false;
+            }}
+            className={`flex items-center justify-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-lg transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap focus:outline-none ${
+              isCloseFocused
+                ? 'bg-emerald-800 ring-2 ring-emerald-400 ring-offset-1 text-white shadow-md'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+          >
+            <span>סגירת אירוע</span>
+            {tasks.every((t) => t.completed) && (
               <kbd
-                className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition ${
-                  isStartFocused
-                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                    : 'bg-slate-800 text-slate-200'
+                className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[11px] font-mono font-medium transition ${
+                  isCloseFocused
+                    ? 'bg-white text-emerald-900 shadow-2xs'
+                    : 'bg-white/20 text-white'
                 }`}
               >
                 Enter ↵
               </kbd>
-            </button>
-            {isStartFocused && (
-              <span className="text-xs font-bold text-slate-900 animate-pulse select-none">
-                ◄ לחץ Enter להתחלת טיפול
-              </span>
             )}
-          </div>
-        ) : currentEvent.status === 'in_progress' ? (
-          <div className="flex items-center gap-2">
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={() => handleStatusChange('closed')}
-              onFocus={() => {
-                if (currentEvent.status === 'in_progress' && tasks.every((t) => t.completed)) {
-                  setIsCloseFocused(true);
-                  isCloseFocusedRef.current = true;
-                }
-              }}
-              onBlur={() => {
-                setIsCloseFocused(false);
-                isCloseFocusedRef.current = false;
-              }}
-              className={`font-medium text-[13px] px-5 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap focus:outline-none ${
-                isCloseFocused
-                  ? 'bg-emerald-800 ring-4 ring-emerald-500 ring-offset-2 ring-offset-white shadow-xl scale-[1.03] text-white'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-              }`}
-            >
-              <span>סגירת אירוע</span>
-              {tasks.every((t) => t.completed) && (
-                <kbd
-                  className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
-                    isCloseFocused
-                      ? 'bg-white text-emerald-900 border border-emerald-300'
-                      : 'bg-emerald-700 text-emerald-100'
-                  }`}
-                >
-                  Enter ↵
-                </kbd>
-              )}
-            </button>
-            {isCloseFocused && (
-              <span className="text-xs font-bold text-emerald-700 animate-pulse select-none">
-                ◄ לחץ Enter לסגירת האירוע
-              </span>
-            )}
-          </div>
+          </button>
         ) : (
           <button
             type="button"
             onClick={() => handleStatusChange('in_progress')}
-            className="bg-slate-200 hover:bg-slate-300 text-black font-medium text-[13px] px-4 py-2 rounded-lg transition cursor-pointer shrink-0 whitespace-nowrap"
+            className="bg-slate-200 hover:bg-slate-300 text-black font-semibold text-xs px-3.5 py-2 rounded-lg transition cursor-pointer shrink-0 whitespace-nowrap"
           >
             פתיחה מחדש
           </button>
@@ -1344,3 +1330,4 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     </section>
   );
 };
+

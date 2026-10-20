@@ -1,3 +1,0 @@
-0000000000000000000000000000000000000000 d41b429374ba247cc6179f8b15cd331c94889b78 Ace1zr <amir.izraeli7@gmail.com> 1792391729 +0300	clone: from https://gitlab.rose.internal/red-unit/developers/combat.git
-d41b429374ba247cc6179f8b15cd331c94889b78 468592cc8495c61507ab465683173b8e351a579f Ace1zr <amir.izraeli7@gmail.com> 1792399787 +0300	commit: feat: implement events panel and align schema with DataForge DB
-468592cc8495c61507ab465683173b8e351a579f 359b81f66dc6be154685d2f7b23c7135f795ce03 Ace1zr <amir.izraeli7@gmail.com> 1792405904 +0300	merge AddEvents: Fast-forward
