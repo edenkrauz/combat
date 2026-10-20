@@ -93,7 +93,7 @@ export const ChecklistTemplatesModal: React.FC<ChecklistTemplatesModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 backdrop-blur-xs p-4 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
       dir="rtl"
       onClick={onClose}
     >

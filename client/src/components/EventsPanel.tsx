@@ -30,8 +30,31 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             selectedEventId={selectedEventId}
             onSelectEvent={onSelectEvent}
           />
-        ))}
-      </div>
-    </aside>
+        </div>
+      )}
+
+      {closedEventNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-6 z-[60] flex items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-lg"
+          dir="rtl"
+        >
+          <Check className="h-5 w-5 shrink-0 text-emerald-600" />
+          <span>
+            האירוע נסגר · משך טיפול {closedEventNotice.duration}
+          </span>
+          <span className="sr-only">{closedEventNotice.title}</span>
+          <button
+            type="button"
+            onClick={() => setClosedEventNotice(null)}
+            aria-label="סגירת הודעת אישור"
+            className="ms-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
