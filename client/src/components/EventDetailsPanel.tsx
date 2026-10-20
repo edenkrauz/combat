@@ -18,7 +18,7 @@ interface EventDetailsPanelProps {
   onClose: () => void;
   onStart: () => void;
   onToggleTask: (taskId: string) => void;
-  onTaskNoteChange: (taskId: string, note: string) => void;
+  onTaskNoteSave: (taskId: string, note: string) => void;
   onCloseEvent: () => void;
 }
 
@@ -43,12 +43,13 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   onClose,
   onStart,
   onToggleTask,
-  onTaskNoteChange,
+  onTaskNoteSave,
   onCloseEvent,
 }) => {
   const [activeTab, setActiveTab] = useState<EventDetailTab>('tasks');
   const [now, setNow] = useState(() => Date.now());
-  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [editingNotes, setEditingNotes] = useState<Record<string, boolean>>({});
+  const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
   const completedCount = tasks.filter((task) => completedTasks[task.id]).length;
   const progress = tasks.length === 0 ? 0 : Math.round((completedCount / tasks.length) * 100);
   const isHandling = status !== 'open';
@@ -269,43 +270,82 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                     </span>
                   </label>
                   {isHandling && (
-                    <div className="mt-2.5 ps-8">
-                      {taskNotes[task.id] && !expandedNotes[task.id] && (
+                    <div className="mt-2.5 ps-8" dir="rtl">
+                      {taskNotes[task.id] && !editingNotes[task.id] && (
                         <p className="mb-2 rounded-lg bg-slate-100 px-3 py-2 text-sm leading-relaxed text-slate-700">
                           <span className="font-semibold">הערה: </span>
                           <span className="whitespace-pre-wrap">{taskNotes[task.id]}</span>
                         </p>
                       )}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpandedNotes((previous) => ({
-                            ...previous,
-                            [task.id]: !previous[task.id],
-                          }))
-                        }
-                        disabled={status === 'closed'}
-                        aria-expanded={Boolean(expandedNotes[task.id])}
-                        className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-default disabled:text-slate-500"
-                      >
-                        {expandedNotes[task.id]
-                          ? 'ביטול עריכת הערה'
-                          : taskNotes[task.id]
-                            ? 'עריכת הערה'
-                            : 'הוספת הערת ביצוע'}
-                      </button>
-                      {expandedNotes[task.id] && (
-                        <textarea
-                          value={taskNotes[task.id] ?? ''}
+                      {editingNotes[task.id] && status !== 'closed' ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={draftNotes[task.id] ?? ''}
+                            onChange={(change) =>
+                              setDraftNotes((previous) => ({
+                                ...previous,
+                                [task.id]: change.target.value,
+                              }))
+                            }
+                            onKeyDown={(key) => {
+                              if (key.key === 'Enter') {
+                                key.preventDefault();
+                                onTaskNoteSave(task.id, (draftNotes[task.id] ?? '').trim());
+                                setEditingNotes((previous) => ({
+                                  ...previous,
+                                  [task.id]: false,
+                                }));
+                              }
+                            }}
+                            placeholder="הערת ביצוע"
+                            aria-label={`הערת ביצוע למשימה: ${task.title}`}
+                            className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onTaskNoteSave(task.id, (draftNotes[task.id] ?? '').trim());
+                              setEditingNotes((previous) => ({
+                                ...previous,
+                                [task.id]: false,
+                              }));
+                            }}
+                            className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                          >
+                            שמירה
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingNotes((previous) => ({
+                                ...previous,
+                                [task.id]: false,
+                              }))
+                            }
+                            className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                          >
+                            ביטול
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDraftNotes((previous) => ({
+                              ...previous,
+                              [task.id]: taskNotes[task.id] ?? '',
+                            }));
+                            setEditingNotes((previous) => ({
+                              ...previous,
+                              [task.id]: true,
+                            }));
+                          }}
                           disabled={status === 'closed'}
-                          onChange={(eventChange) =>
-                            onTaskNoteChange(task.id, eventChange.target.value)
-                          }
-                          rows={2}
-                          placeholder="כתיבת הערת ביצוע"
-                          aria-label={`הערת ביצוע: ${task.title}`}
-                          className="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none disabled:bg-slate-50"
-                        />
+                          className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-default disabled:text-slate-500"
+                        >
+                          {taskNotes[task.id] ? 'עריכת הערה' : 'הוספת הערת ביצוע'}
+                        </button>
                       )}
                     </div>
                   )}

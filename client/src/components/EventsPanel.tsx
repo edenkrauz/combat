@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Check, X } from 'lucide-react';
 import { INITIAL_CHECKLISTS, type CategoryKey } from './ChecklistTemplatesModal';
 import type { EventItem, EventStatus, SectorGroup } from '../types/event';
 import { EventDetailsPanel, type EventTask } from './EventDetailsPanel';
@@ -13,6 +14,18 @@ interface EventWorkflow {
   completedTasks: Record<string, boolean>;
   taskNotes: Record<string, string>;
 }
+
+interface ClosedEventNotice {
+  title: string;
+  duration: string;
+}
+
+const formatDuration = (seconds: number | null): string => {
+  if (seconds === null) return '--:--:--';
+  return `${String(Math.floor(seconds / 3600)).padStart(2, '0')}:${String(
+    Math.floor((seconds % 3600) / 60),
+  ).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+};
 
 const getEventCategories = (event: EventItem): CategoryKey[] => {
   switch (event.event_type) {
@@ -45,6 +58,13 @@ const getEventTasks = (event: EventItem): EventTask[] =>
 export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
   const [workflows, setWorkflows] = useState<Record<string, EventWorkflow>>({});
+  const [closedEventNotice, setClosedEventNotice] = useState<ClosedEventNotice | null>(null);
+
+  useEffect(() => {
+    if (!closedEventNotice) return;
+    const timeout = window.setTimeout(() => setClosedEventNotice(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [closedEventNotice]);
 
   const updateWorkflow = (
     event: EventItem,
@@ -74,6 +94,44 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
       }
     : null;
   const selectedTasks = selectedEvent ? getEventTasks(selectedEvent) : [];
+  const activeSectors = sectors
+    .map((sector) => ({
+      ...sector,
+      events: sector.events.filter(
+        (event) => (workflows[event.event_id]?.status ?? event.status) !== 'closed',
+      ),
+    }))
+    .filter((sector) => sector.events.length > 0);
+
+  const closeSelectedEvent = (event: EventItem) => {
+    const currentWorkflow = workflows[event.event_id] ?? {
+      status: event.status,
+      completedTasks: Object.fromEntries(
+        event.status === 'closed' ? getEventTasks(event).map((task) => [task.id, true]) : [],
+      ),
+      taskNotes: {},
+    };
+    const tasks = getEventTasks(event);
+    if (
+      currentWorkflow.status !== 'in_progress' ||
+      !tasks.every((task) => currentWorkflow.completedTasks[task.id])
+    ) {
+      return;
+    }
+
+    const elapsed = Date.parse(event.start_time);
+    const duration =
+      Number.isNaN(elapsed) ? null : Math.max(0, Math.floor((Date.now() - elapsed) / 1000));
+    setWorkflows((previous) => ({
+      ...previous,
+      [event.event_id]: { ...currentWorkflow, status: 'closed' },
+    }));
+    setSelectedEvent(null);
+    setClosedEventNotice({
+      title: event.title,
+      duration: formatDuration(duration),
+    });
+  };
 
   return (
     <div className="relative w-full max-w-[420px]" dir="rtl">
@@ -82,7 +140,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
           <h2 className="text-lg font-bold text-slate-800">אירועים</h2>
         </div>
         <div className="flex-1 space-y-3 overflow-y-auto pr-0.5">
-          {sectors.map((sector) => (
+          {activeSectors.map((sector) => (
             <SectorAccordion
               key={sector.sector_id}
               sector={sector}
@@ -119,19 +177,37 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
                 },
               }))
             }
-            onTaskNoteChange={(taskId, note) =>
+            onTaskNoteSave={(taskId, note) =>
               updateWorkflow(selectedEvent, (current) => ({
                 ...current,
                 taskNotes: { ...current.taskNotes, [taskId]: note },
               }))
             }
-            onCloseEvent={() =>
-              updateWorkflow(selectedEvent, (current) => ({
-                ...current,
-                status: 'closed',
-              }))
-            }
+            onCloseEvent={() => closeSelectedEvent(selectedEvent)}
           />
+        </div>
+      )}
+
+      {closedEventNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-6 z-[60] flex items-center gap-3 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-lg"
+          dir="rtl"
+        >
+          <Check className="h-5 w-5 shrink-0 text-emerald-600" />
+          <span>
+            האירוע נסגר · משך טיפול {closedEventNotice.duration}
+          </span>
+          <span className="sr-only">{closedEventNotice.title}</span>
+          <button
+            type="button"
+            onClick={() => setClosedEventNotice(null)}
+            aria-label="סגירת הודעת אישור"
+            className="ms-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
     </div>
