@@ -1,4 +1,4 @@
-import { X, Clock } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface AuditLogModalProps {
   isOpen: boolean;
@@ -62,47 +62,45 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in select-none"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
       dir="rtl"
       onClick={onClose}
     >
       <div
-        className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden text-slate-800 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100"
+        className="w-full max-w-[640px] bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 flex flex-col gap-4 text-right transition-all dark:bg-slate-900 dark:border-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center dark:bg-emerald-900/30 dark:text-emerald-400">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                יומן ביקורת מבצעי (Audit Log)
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                תיעוד פעולות מפעילים, שינויי סטטוס והחלטות בחמ״ל בזמן אמת
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between pb-0.5">
+          <h2 className="text-[17px] font-bold text-slate-900 dark:text-white">
+            יומן ביקורת
+          </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-white"
+            title="סגור"
+            aria-label="סגור"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5 max-h-[60vh] overflow-y-auto space-y-3">
+        {/* Info Banner Box */}
+        <div className="w-full bg-[#f8fafc] border border-slate-200/90 rounded-xl py-2 px-3 text-center text-xs text-slate-600 font-normal dark:bg-slate-850 dark:border-slate-800 dark:text-slate-300">
+          תיעוד פעולות מפעילים, שינויי סטטוס והחלטות בחמ״ל בזמן אמת
+        </div>
+
+        {/* Log Entries List */}
+        <div className="flex flex-col gap-2 min-h-[160px] max-h-[300px] overflow-y-auto pr-0.5">
           {AUDIT_LOGS.map((entry) => (
             <div
               key={entry.id}
-              className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-slate-50 transition flex items-start gap-3 dark:bg-slate-800/40 dark:border-slate-800 dark:hover:bg-slate-800/70"
+              className="flex items-start gap-3 p-2.5 bg-white border border-slate-200/90 rounded-xl hover:border-slate-300 transition dark:bg-slate-850 dark:border-slate-800 dark:hover:border-slate-700"
             >
-              <div className="font-mono text-xs font-bold text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-md shrink-0 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
+              <span className="font-mono text-xs font-semibold text-slate-500 shrink-0 pt-0.5 pr-1 dark:text-slate-400">
                 {entry.timestamp}
-              </div>
+              </span>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
@@ -126,7 +124,7 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
                     {entry.level === 'action' ? 'פעולה מבצעית' : entry.level === 'warning' ? 'התרעה' : 'מידע'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed dark:text-slate-300">
+                <p className="text-xs text-slate-600 leading-relaxed select-text dark:text-slate-300">
                   {entry.details}
                 </p>
               </div>
@@ -134,16 +132,14 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
           ))}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between dark:bg-slate-850 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            מוצגות 5 פעולות אחרונות • תיעוד מאובטח
-          </span>
+        {/* Footer with Close Button on Right */}
+        <div className="flex justify-start pt-1">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-lg transition cursor-pointer dark:text-slate-300 dark:hover:bg-slate-800"
+            className="px-5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-2xs cursor-pointer transition dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-750"
           >
-            סגור
+            סגירה
           </button>
         </div>
       </div>
