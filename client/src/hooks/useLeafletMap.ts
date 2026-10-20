@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 
+export type GoogleMapType = 'roadmap' | 'satellite' | 'terrain';
+
 export interface UseLeafletMapOptions {
   defaultCenter?: [number, number];
   defaultZoom?: number;
@@ -14,12 +16,29 @@ export interface CoordinatesState {
 export const ISRAEL_CENTER_DISTRICT: [number, number] = [32.05, 34.85];
 export const DEFAULT_MAP_ZOOM = 11;
 
+//Creates Google Maps tile layer for Roadmap (Default)
+const createGoogleTileLayer = (): L.TileLayer => {
+  // Define the custom map styling parameters (hides Points of Interest/POI labels)
+  const noMarkersStyle: string = 's.t:3|s.e:l|p.v:off'
+
+  return L.tileLayer(`https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&apistyle=${noMarkersStyle}`,  {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; Google Maps',
+    crossOrigin: true,
+  });
+};
+
 export const useLeafletMap = ({
   defaultCenter = ISRAEL_CENTER_DISTRICT,
   defaultZoom = DEFAULT_MAP_ZOOM,
 }: UseLeafletMapOptions = {}) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
+  const baseLayerRef = useRef<L.TileLayer | null>(null);
+  const trafficLayerRef = useRef<L.TileLayer | null>(null);
 
   const centerLat = defaultCenter[0];
   const centerLng = defaultCenter[1];
@@ -45,7 +64,7 @@ export const useLeafletMap = ({
     setScaleKmText(`${Math.max(1, distanceKm)} ק"מ`);
   }, []);
 
-  // Initialize Map Instance
+  // Initialize Map Instance with Google Maps default roadmap
   useEffect(() => {
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
@@ -54,21 +73,19 @@ export const useLeafletMap = ({
     const map = L.map(mapContainerRef.current, {
       center: [centerLat, centerLng],
       zoom: defaultZoom,
-      zoomControl: false, // Custom floating toolbar
+      zoomControl: false, // Custom Google Maps toolbar
       attributionControl: false,
-      minZoom: 8,
-      maxZoom: 18,
+      minZoom: 7,
+      maxZoom: 20,
     });
 
     mapInstanceRef.current = map;
+    setMapInstance(map);
 
-    // Reliable OpenStreetMap base tiles with light-grey tactical cartography filter
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-      className: 'map-tiles-light-grey',
-      crossOrigin: true,
-    }).addTo(map);
+    // Initial base Google Maps Roadmap layer
+    const initialBase = createGoogleTileLayer();
+    initialBase.addTo(map);
+    baseLayerRef.current = initialBase;
 
     // Track move & zoom events
     const handleMove = () => updateMapMetrics(map);
@@ -99,6 +116,9 @@ export const useLeafletMap = ({
       map.off('zoom', handleMove);
       map.remove();
       mapInstanceRef.current = null;
+      setMapInstance(null);
+      baseLayerRef.current = null;
+      trafficLayerRef.current = null;
     };
   }, [centerLat, centerLng, defaultZoom, updateMapMetrics]);
 
@@ -116,12 +136,19 @@ export const useLeafletMap = ({
     mapInstanceRef.current.flyTo([centerLat, centerLng], defaultZoom, { duration: 0.8 });
   }, [centerLat, centerLng, defaultZoom]);
 
+  const flyTo = useCallback((lat: number, lng: number, zoom = 14) => {
+    if (!mapInstanceRef.current) return;
+    mapInstanceRef.current.flyTo([lat, lng], zoom, { duration: 0.8 });
+  }, []);
+
   return {
     mapContainerRef,
+    mapInstance,
     centerCoords,
     scaleKmText,
     zoomIn,
     zoomOut,
     recenter,
+    flyTo,
   };
 };
