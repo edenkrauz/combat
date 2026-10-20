@@ -29,6 +29,40 @@ interface UpdateEntry {
   text: string;
 }
 
+const formatDateTime = (isoString?: string | null): string => {
+  if (!isoString) return '—';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month} • ${hours}:${minutes}`;
+  } catch {
+    return isoString;
+  }
+};
+
+const formatTimeAgo = (isoString?: string | null): string => {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const diffMs = Date.now() - d.getTime();
+    if (diffMs < 0) return 'עכשיו';
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'הרגע';
+    if (mins < 60) return `לפני ${mins} ד'`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `לפני ${hours} שע'`;
+    const days = Math.floor(hours / 24);
+    return `לפני ${days} ימים`;
+  } catch {
+    return '';
+  }
+};
+
 export const EventDetails: React.FC<EventDetailsProps> = ({
   event,
   onClose,
@@ -47,6 +81,19 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   );
   const [isStartFocused, setIsStartFocused] = useState<boolean>(event.status === 'open');
   const [isCloseFocused, setIsCloseFocused] = useState<boolean>(false);
+
+  // Edit form state
+  const [editTitle, setEditTitle] = useState(event.title);
+  const [editDesc, setEditDesc] = useState(event.description);
+  const [editBlueInjured, setEditBlueInjured] = useState<number | ''>(
+    event.blue_injured_count ?? ''
+  );
+  const [editBlueDead, setEditBlueDead] = useState<number | ''>(
+    event.blue_death_count ?? ''
+  );
+  const [editInvolved, setEditInvolved] = useState<number | ''>(
+    event.involved_count ?? ''
+  );
 
   // Tasks state (no numbers)
   const [tasks, setTasks] = useState<OperationalTask[]>([
@@ -82,20 +129,43 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   const [updatesText, setUpdatesText] = useState('');
   const [updatesList, setUpdatesList] = useState<UpdateEntry[]>([]);
 
-  // Elapsed handling timer (ticking from 00:16:52 per Image 2)
-  const [elapsedSeconds, setElapsedSeconds] = useState(16 * 60 + 52);
+  // Elapsed handling timer: calculate elapsed seconds since event start_time or created_at
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    const referenceTime = event.start_time || event.created_at;
+    if (referenceTime) {
+      const startTimeMs = new Date(referenceTime).getTime();
+      if (!isNaN(startTimeMs)) {
+        return Math.max(0, Math.floor((Date.now() - startTimeMs) / 1000));
+      }
+    }
+    return 0;
+  });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Reset & focus appropriately when event_id changes
+  // Reset & focus appropriately when event changes
   useEffect(() => {
     setCurrentEvent(event);
     currentEventRef.current = event;
+    setEditTitle(event.title);
+    setEditDesc(event.description);
+    setEditBlueInjured(event.blue_injured_count ?? '');
+    setEditBlueDead(event.blue_death_count ?? '');
+    setEditInvolved(event.involved_count ?? '');
+
+    const referenceTime = event.start_time || event.created_at;
+    if (referenceTime) {
+      const startTimeMs = new Date(referenceTime).getTime();
+      if (!isNaN(startTimeMs)) {
+        setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTimeMs) / 1000)));
+      }
+    }
+
     if (event.status === 'open') {
       setIsStartFocused(true);
       isStartFocusedRef.current = true;
@@ -114,7 +184,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     }
     setIsCloseFocused(false);
     isCloseFocusedRef.current = false;
-  }, [event.event_id]);
+  }, [event]);
 
   // Auto-scroll focused task into view
   useEffect(() => {
@@ -251,7 +321,6 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       }
 
       // 3. ArrowLeft / ArrowRight: Subtitles (tabs) navigation in RTL
-      // details (0, right), tasks (1), updates (2), history (3, left)
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         const tabIndex = TABS.indexOf(curTab);
@@ -277,9 +346,6 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       }
 
       // 4. ArrowUp:
-      // If we are on subtitles level (curTaskIdx === -1):
-      // - If status === 'open': go UP to "התחלת טיפול"!
-      // - If status === 'in_progress' and canClose: go UP to "סגירת אירוע"!
       if (e.key === 'ArrowUp') {
         if (curTaskIdx === -1) {
           if (curEvent.status === 'open') {
@@ -308,8 +374,6 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       }
 
       // 5. ArrowDown:
-      // If on 'tasks': moves into tasks (index 0, 1, 2...)
-      // If on 'updates': moves into textarea to write an update!
       if (e.key === 'ArrowDown') {
         if (curTab === 'tasks' && curTasks.length > 0) {
           e.preventDefault();
@@ -327,8 +391,6 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       }
 
       // 6. Enter or Space:
-      // If in 'tasks' tab and a task is focused: toggle task!
-      // If status === 'open' and on subtitles: start treatment!
       if (e.key === 'Enter' || e.key === ' ') {
         if (curTab === 'tasks' && curTasks.length > 0 && curTaskIdx >= 0) {
           const curTask = curTasks[curTaskIdx];
@@ -412,19 +474,6 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     focusedTaskIndexRef.current = 0;
   };
 
-  // Edit form state
-  const [editTitle, setEditTitle] = useState(currentEvent.title);
-  const [editDesc, setEditDesc] = useState(currentEvent.description);
-  const [editBlueInjured, setEditBlueInjured] = useState<number | ''>(
-    currentEvent.blue_injured_count ?? ''
-  );
-  const [editBlueDead, setEditBlueDead] = useState<number | ''>(
-    currentEvent.blue_death_count ?? ''
-  );
-  const [editInvolved, setEditInvolved] = useState<number | ''>(
-    currentEvent.involved_count ?? 80
-  );
-
   const handleSaveEdit = () => {
     const updated: EventItem = {
       ...currentEvent,
@@ -432,7 +481,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       description: editDesc,
       blue_injured_count: editBlueInjured === '' ? null : Number(editBlueInjured),
       blue_death_count: editBlueDead === '' ? null : Number(editBlueDead),
-      involved_count: editInvolved === '' ? 0 : Number(editInvolved),
+      involved_count: editInvolved === '' ? null : Number(editInvolved),
       updated_at: new Date().toISOString(),
     };
     setCurrentEvent(updated);
@@ -507,7 +556,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
 
         {/* Urgency Pill - with red circle on the left */}
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#fff0f3] text-[#b91c1c] border border-rose-200">
-          <span>{currentEvent.threat_label || 'דחיפות מיידי'}</span>
+          <span>{currentEvent.threat_label || (currentEvent.threat_level >= 70 ? 'סיכון גבוה' : currentEvent.threat_level >= 40 ? 'סיכון בינוני' : 'סיכון נמוך')}</span>
           <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
         </span>
 
@@ -528,7 +577,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         )}
       </div>
 
-      {/* 4. LIFECYCLE / STATUS PROGRESS TRACK (matching Image 2) */}
+      {/* 4. LIFECYCLE / STATUS PROGRESS TRACK */}
       <div className="mb-3.5">
         <div className="relative flex items-center justify-between pb-2">
           {/* Background track line */}
@@ -586,7 +635,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         </div>
       </div>
 
-      {/* 5. CUMULATIVE TIME BANNER (matching Image) */}
+      {/* 5. CUMULATIVE TIME BANNER */}
       <div className="bg-white border border-slate-200 rounded-xl px-3.5 py-3 flex items-center justify-between shadow-2xs mb-3">
         {/* Right side: Clock icon + label + digital timer */}
         <div className="flex items-center gap-2">
@@ -599,18 +648,18 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </span>
         </div>
 
-        {/* Left side: Red pill with text on right and red dot on left */}
+        {/* Left side: Red pill with duration info */}
         <div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 bg-[#fff0f3] border border-rose-200/90 whitespace-nowrap">
-            <span>מעל 2 דקות</span>
+            <span>{elapsedSeconds >= 120 ? 'מעל 2 דקות' : 'עד 2 דקות'}</span>
             <span className="w-2 h-2 rounded-full bg-rose-600"></span>
           </span>
         </div>
       </div>
 
-      {/* 6. ACTION BANNER (Start handling - matching Image) */}
-      <div className="bg-[#eff6ff] border border-blue-100 rounded-xl px-4 py-3.5 flex items-center justify-between gap-4 mb-4">
-        <p className="text-[13px] text-slate-700 leading-normal font-normal">
+      {/* 6. ACTION BANNER */}
+      <div className="bg-[#eff6ff] border border-blue-100 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <p className="text-xs text-slate-700 leading-relaxed font-normal flex-1">
           {currentEvent.status === 'open'
             ? 'התחלת טיפול תאפשר ביצוע משימות וסגירת האירוע.'
             : currentEvent.status === 'in_progress'
@@ -619,88 +668,74 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         </p>
 
         {currentEvent.status === 'open' ? (
-          <div className="flex items-center gap-2">
-            <button
-              ref={startButtonRef}
-              type="button"
-              onClick={handleStartHandling}
-              onFocus={() => {
-                setIsStartFocused(true);
-                isStartFocusedRef.current = true;
-              }}
-              onBlur={() => {
-                setIsStartFocused(false);
-                isStartFocusedRef.current = false;
-              }}
-              className={`font-medium text-[13px] px-5 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap focus:outline-none ${
+          <button
+            ref={startButtonRef}
+            type="button"
+            onClick={handleStartHandling}
+            onFocus={() => {
+              setIsStartFocused(true);
+              isStartFocusedRef.current = true;
+            }}
+            onBlur={() => {
+              setIsStartFocused(false);
+              isStartFocusedRef.current = false;
+            }}
+            className={`flex items-center justify-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-lg transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap focus:outline-none ${
+              isStartFocused
+                ? 'bg-slate-900 ring-2 ring-blue-500/80 ring-offset-1 text-white shadow-md'
+                : 'bg-[#131b2e] hover:bg-black active:bg-slate-900 text-white'
+            }`}
+          >
+            <span>התחלת טיפול</span>
+            <kbd
+              className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[11px] font-mono font-medium transition ${
                 isStartFocused
-                  ? 'bg-black ring-4 ring-slate-900/40 ring-offset-2 ring-offset-white shadow-xl scale-[1.03] text-white'
-                  : 'bg-[#131b2e] hover:bg-black active:bg-slate-900 text-white'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'bg-white/20 text-white'
               }`}
             >
-              <span>התחלת טיפול</span>
+              Enter ↵
+            </kbd>
+          </button>
+        ) : currentEvent.status === 'in_progress' ? (
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={() => handleStatusChange('closed')}
+            onFocus={() => {
+              if (currentEvent.status === 'in_progress' && tasks.every((t) => t.completed)) {
+                setIsCloseFocused(true);
+                isCloseFocusedRef.current = true;
+              }
+            }}
+            onBlur={() => {
+              setIsCloseFocused(false);
+              isCloseFocusedRef.current = false;
+            }}
+            className={`flex items-center justify-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-lg transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap focus:outline-none ${
+              isCloseFocused
+                ? 'bg-emerald-800 ring-2 ring-emerald-400 ring-offset-1 text-white shadow-md'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+            }`}
+          >
+            <span>סגירת אירוע</span>
+            {tasks.every((t) => t.completed) && (
               <kbd
-                className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition ${
-                  isStartFocused
-                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                    : 'bg-slate-800 text-slate-200'
+                className={`inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[11px] font-mono font-medium transition ${
+                  isCloseFocused
+                    ? 'bg-white text-emerald-900 shadow-2xs'
+                    : 'bg-white/20 text-white'
                 }`}
               >
                 Enter ↵
               </kbd>
-            </button>
-            {isStartFocused && (
-              <span className="text-xs font-bold text-slate-900 animate-pulse select-none">
-                ◄ לחץ Enter להתחלת טיפול
-              </span>
             )}
-          </div>
-        ) : currentEvent.status === 'in_progress' ? (
-          <div className="flex items-center gap-2">
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={() => handleStatusChange('closed')}
-              onFocus={() => {
-                if (currentEvent.status === 'in_progress' && tasks.every((t) => t.completed)) {
-                  setIsCloseFocused(true);
-                  isCloseFocusedRef.current = true;
-                }
-              }}
-              onBlur={() => {
-                setIsCloseFocused(false);
-                isCloseFocusedRef.current = false;
-              }}
-              className={`font-medium text-[13px] px-5 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap focus:outline-none ${
-                isCloseFocused
-                  ? 'bg-emerald-800 ring-4 ring-emerald-500 ring-offset-2 ring-offset-white shadow-xl scale-[1.03] text-white'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-              }`}
-            >
-              <span>סגירת אירוע</span>
-              {tasks.every((t) => t.completed) && (
-                <kbd
-                  className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
-                    isCloseFocused
-                      ? 'bg-white text-emerald-900 border border-emerald-300'
-                      : 'bg-emerald-700 text-emerald-100'
-                  }`}
-                >
-                  Enter ↵
-                </kbd>
-              )}
-            </button>
-            {isCloseFocused && (
-              <span className="text-xs font-bold text-emerald-700 animate-pulse select-none">
-                ◄ לחץ Enter לסגירת האירוע
-              </span>
-            )}
-          </div>
+          </button>
         ) : (
           <button
             type="button"
             onClick={() => handleStatusChange('in_progress')}
-            className="bg-slate-200 hover:bg-slate-300 text-black font-medium text-[13px] px-4 py-2 rounded-lg transition cursor-pointer shrink-0 whitespace-nowrap"
+            className="bg-slate-200 hover:bg-slate-300 text-black font-semibold text-xs px-3.5 py-2 rounded-lg transition cursor-pointer shrink-0 whitespace-nowrap"
           >
             פתיחה מחדש
           </button>
@@ -734,7 +769,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         >
           <span>משימות</span>
           <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700 font-mono font-medium">
-            {completedTasksCount}/4
+            {completedTasksCount}/{tasks.length}
           </span>
         </button>
 
@@ -750,7 +785,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         >
           <span>טיפול ועדכונים</span>
           <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700 font-mono font-medium">
-            0
+            {updatesList.length}
           </span>
         </button>
 
@@ -829,7 +864,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   <div className="bg-white rounded-lg p-2 border border-blue-50 text-center">
                     <span className="block text-[11px] text-black">פצועים</span>
                     <span className="text-xl font-bold text-black">
-                      {currentEvent.blue_injured_count ?? 4}
+                      {currentEvent.blue_injured_count ?? 0}
                     </span>
                   </div>
                   <div className="bg-white rounded-lg p-2 border border-blue-50 text-center">
@@ -887,7 +922,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                 מעורבים / מושפעים
               </span>
               <span className="text-2xl font-extrabold text-black mt-1">
-                {currentEvent.involved_count ?? 80}
+                {currentEvent.involved_count ?? currentEvent.deployed_forces ?? 0}
               </span>
             </div>
 
@@ -897,7 +932,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                 רמת דחיפות
               </span>
               <span className="text-xl font-extrabold text-rose-700 mt-1">
-                {currentEvent.urgency_label || 'מיידי'}
+                {currentEvent.urgency_label || currentEvent.threat_label || (currentEvent.threat_level >= 70 ? 'מיידי' : currentEvent.threat_level >= 40 ? 'גבוהה' : 'רגילה')}
               </span>
             </div>
           </div>
@@ -920,7 +955,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <div className="flex items-center justify-between py-2.5 px-3">
                 <span className="text-slate-500 font-medium">קטגוריות</span>
                 <span className="font-semibold text-black">
-                  {currentEvent.categories?.join(' • ') || 'פח"ע • הפרות סדר ואלימות המונית'}
+                  {currentEvent.categories?.join(' • ') || currentEvent.event_type || 'פח"ע'}
                 </span>
               </div>
 
@@ -928,7 +963,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <div className="flex items-center justify-between py-2.5 px-3">
                 <span className="text-slate-500 font-medium">מיקום גאוגרפי</span>
                 <span className="font-semibold text-black">
-                  {currentEvent.geo_location_hierarchy || 'אסיה > ישראל > מרכז'}
+                  {currentEvent.geo_location_hierarchy || `ישראל > ${currentEvent.sector}`}
                 </span>
               </div>
 
@@ -936,7 +971,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <div className="flex items-center justify-between py-2.5 px-3">
                 <span className="text-slate-500 font-medium">מיקום</span>
                 <span className="font-semibold text-black">
-                  {currentEvent.exact_location || currentEvent.sector_description || 'כניסה לעיר, ירושלים'}
+                  {currentEvent.exact_location || currentEvent.sector_description || currentEvent.sector}
                 </span>
               </div>
 
@@ -960,10 +995,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   זמן התרחשות
                 </span>
                 <span className="block text-xs font-bold text-black mt-1">
-                  20/10 • 10:33
+                  {currentEvent.time_display || formatDateTime(currentEvent.start_time)}
                 </span>
                 <span className="block text-[10px] text-slate-400 mt-0.5">
-                  לפני 13 ד'
+                  {formatTimeAgo(currentEvent.start_time)}
                 </span>
               </div>
 
@@ -973,10 +1008,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   זמן קליטה במערכת
                 </span>
                 <span className="block text-xs font-bold text-black mt-1">
-                  20/10 • 10:35
+                  {formatDateTime(currentEvent.created_at)}
                 </span>
                 <span className="block text-[10px] text-slate-400 mt-0.5">
-                  לפני 11 ד'
+                  {formatTimeAgo(currentEvent.created_at)}
                 </span>
               </div>
 
@@ -986,10 +1021,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   עדכון אחרון
                 </span>
                 <span className="block text-xs font-bold text-black mt-1">
-                  20/10 • 10:41
+                  {formatDateTime(currentEvent.updated_at)}
                 </span>
                 <span className="block text-[10px] text-slate-400 mt-0.5">
-                  לפני 5 ד'
+                  {formatTimeAgo(currentEvent.updated_at)}
                 </span>
               </div>
             </div>
@@ -1031,30 +1066,30 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                       : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
-                {/* Checkbox only - no number */}
-                <div
-                  className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition ${
-                    task.completed
-                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                      : 'border-slate-300 bg-white'
-                  }`}
-                >
-                  {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                </div>
+                  {/* Checkbox only - no number */}
+                  <div
+                    className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition ${
+                      task.completed
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-slate-300 bg-white'
+                    }`}
+                  >
+                    {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
 
-                <div className="flex-1 text-xs">
-                  <span className={task.completed ? 'line-through text-slate-400' : 'text-black font-medium'}>
-                    {task.text}
-                  </span>
+                  <div className="flex-1 text-xs">
+                    <span className={task.completed ? 'line-through text-slate-400' : 'text-black font-medium'}>
+                      {task.text}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
+              );
             })}
           </div>
         </div>
       )}
 
-      {/* Tab: Treatment & Updates (טיפול ועדכונים) - MATCHING IMAGE 3 */}
+      {/* Tab: Treatment & Updates (טיפול ועדכונים) */}
       {activeTab === 'updates' && (
         <div className="space-y-4">
           {/* Top Yellow Card: Recommendations for next steps */}
@@ -1099,7 +1134,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             </div>
           </div>
 
-          {/* Bottom Card: Treatment updates matching Image 3 */}
+          {/* Bottom Card: Treatment updates */}
           <div>
             <h2 className="text-xs font-bold text-black mb-2">
               עדכוני טיפול
@@ -1123,7 +1158,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               />
             </div>
 
-            {/* Button "הוספת עדכון" aligned to left per Image 3 */}
+            {/* Button "הוספת עדכון" */}
             <div className="flex justify-end">
               <button
                 type="button"
@@ -1169,16 +1204,16 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   קליטה
                 </span>
                 <span className="font-mono text-xs text-black font-medium">
-                  20/10 • 11:03
+                  {formatDateTime(currentEvent.created_at || currentEvent.start_time)}
                 </span>
               </div>
 
               <div className="font-bold text-black text-xs">
-                האירוע נקלט מ-3 מקורות פומביים
+                {currentEvent.notes || 'קליטת אירוע במערכת המבצעית'}
               </div>
 
               <div className="text-slate-500 text-[11.5px]">
-                מערכת • קליטה אוטומטית
+                {currentEvent.source_label || 'מערכת • קליטה אוטומטית'}
               </div>
             </div>
           </div>
@@ -1295,3 +1330,4 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     </section>
   );
 };
+
