@@ -7,6 +7,8 @@ import { EventsPanel } from './components/EventsPanel';
 import { Map } from './components/Map';
 import { mockSectorsData } from './data/mockEvents';
 
+const STATISTICS_DASHBOARD_URL = 'https://www.google.com';
+
 export const App: React.FC = () => {
 
   const activeSector = mockSectorsData[0];
@@ -53,8 +55,10 @@ export const App: React.FC = () => {
         isOpen={isStatisticsOpen}
         onClose={() => setIsStatisticsOpen(false)}
         title="סטטיסטיקה"
+        maxWidthClassName="max-w-5xl"
+        contentClassName="h-[70vh]"
       >
-        {/* TODO: analysts dashboard */}
+        <iframe src={STATISTICS_DASHBOARD_URL} title="סטטיסטיקה" className="w-full h-full" />
       </StatisticsModal>
     </div>
   );
