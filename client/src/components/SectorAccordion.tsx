@@ -7,6 +7,8 @@ interface SectorAccordionProps {
   sector: SectorGroup;
   defaultExpanded?: boolean;
   selectedEventId?: string | null;
+  focusedEventId?: string | null;
+  onFocusEvent?: (event: EventItem) => void;
   onSelectEvent: (event: EventItem) => void;
 }
 
@@ -14,6 +16,8 @@ export const SectorAccordion: React.FC<SectorAccordionProps> = ({
   sector,
   defaultExpanded = true,
   selectedEventId,
+  focusedEventId,
+  onFocusEvent,
   onSelectEvent,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -74,6 +78,8 @@ export const SectorAccordion: React.FC<SectorAccordionProps> = ({
               key={event.event_id}
               event={event}
               isSelected={selectedEventId === event.event_id}
+              isFocused={focusedEventId === event.event_id}
+              onFocus={() => onFocusEvent?.(event)}
               onClick={() => onSelectEvent(event)}
             />
           ))}
