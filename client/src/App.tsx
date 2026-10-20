@@ -34,7 +34,7 @@ export const App: React.FC = () => {
         <div className="mr-0 ml-auto w-full max-w-[420px]">
           <EventsPanel sectors={mockSectorsData} />
         </div>
-        <div className="flex-1 h-[calc(100vh-2rem)] flex flex-col">
+        <div className="flex-1 ps-4 h-[calc(100vh-2rem)] flex flex-col">
           <Map events={allEvents} sector={activeSector} />
         </div>
       </main>
