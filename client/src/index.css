@@ -21,7 +21,7 @@ body {
   height: 100%;
 }
 
-/* Light grey tactical basemap styling */
+Light grey tactical basemap styling
 .map-tiles-light-grey {
   filter: grayscale(100%) brightness(108%) contrast(85%);
   -webkit-filter: grayscale(100%) brightness(108%) contrast(85%);
