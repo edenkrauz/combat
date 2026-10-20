@@ -56,7 +56,7 @@ export const App: React.FC = () => {
         onClose={() => setIsStatisticsOpen(false)}
         title="סטטיסטיקה"
         maxWidthClassName="max-w-5xl"
-        contentClassName="h-[85vh]"
+        contentClassName="h-[80vh]"
       >
         <iframe src={STATISTICS_DASHBOARD_URL} title="סטטיסטיקה" className="w-full h-full" />
       </StatisticsModal>
