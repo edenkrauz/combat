@@ -17,7 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 // Add APIs, must be after middleware
 app.use('/', BaseRouter);
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Add error handler. `_next` must stay: Express only treats 4-arg middleware
 // as an error handler.
@@ -30,7 +30,7 @@ app.use((err: Error, _: Request, res: Response, _next: NextFunction) => {
       return res.status(413).json({ error: 'Request body too large' });
     }
   }
-  return res.status(500).json({ error: 'Internal Server Error' });
+  return res.status(500).json({ error: `Internal Server Error: ${err.message}` });
 });
 
 app.get('/', (_: Request, res: Response) => {
