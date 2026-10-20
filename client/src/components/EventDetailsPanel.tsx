@@ -73,6 +73,24 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
     setFocusedTaskIndex(-1);
   }, [event.event_id]);
 
+    const [isCloseFocused, setIsCloseFocused] = useState<boolean>(false);
+  const isCloseFocusedRef = useRef(isCloseFocused);
+  isCloseFocusedRef.current = isCloseFocused;
+
+  const canCloseEventRef = useRef(canCloseEvent);
+  canCloseEventRef.current = canCloseEvent;
+
+  const onCloseEventRef = useRef(onCloseEvent);
+  onCloseEventRef.current = onCloseEvent;
+
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!canCloseEvent && isCloseFocused) {
+      setIsCloseFocused(false);
+    }
+  }, [canCloseEvent, isCloseFocused]);
+
   // Keep mutable refs for keyboard listener to prevent stale closures
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
@@ -113,7 +131,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
     }
   }, [focusedTaskIndex, activeTab, tasks]);
 
-  // Keyboard navigation for tabs (ArrowLeft/ArrowRight) and tasks (ArrowDown/ArrowUp, Enter/Space)
+  // Keyboard navigation for tabs, tasks, and close event button
   useEffect(() => {
     const isTextInput = (el: HTMLElement | null): boolean => {
       if (!el) return false;
@@ -151,6 +169,43 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
       const currentTasks = tasksRef.current;
       const currentIndex = focusedTaskIndexRef.current;
       const currentStatus = statusRef.current;
+      const closeFocused = isCloseFocusedRef.current;
+      const canClose = canCloseEventRef.current;
+
+      // Handling when focus is on "סגירת אירוע" button
+      if (closeFocused) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (canClose) {
+            onCloseEventRef.current();
+          }
+          return;
+        }
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setIsCloseFocused(false);
+          panelRef.current?.focus({ preventScroll: true });
+          return;
+        }
+
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          setIsCloseFocused(false);
+          const tabIndex = TABS.indexOf(currentTab);
+          const nextIndex =
+            e.key === 'ArrowLeft'
+              ? Math.min(tabIndex + 1, TABS.length - 1)
+              : Math.max(tabIndex - 1, 0);
+          const nextTab = TABS[nextIndex];
+          activeTabRef.current = nextTab;
+          setActiveTab(nextTab);
+          focusedTaskIndexRef.current = -1;
+          setFocusedTaskIndex(-1);
+          return;
+        }
+        return;
+      }
 
       // 3. ArrowLeft / ArrowRight: Move between tabs (subtitles) in RTL
       // In RTL: details (0, right), tasks (1, middle), history (2, left)
@@ -178,7 +233,26 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         return;
       }
 
-      // 4. ArrowDown / ArrowUp: Move inside the active tab's items (tasks)
+      // 4. ArrowUp: Move up
+      // From subtitles (currentIndex === -1), if all tasks done (canClose), go up to "סגירת אירוע" button!
+      if (e.key === 'ArrowUp') {
+        if (currentIndex === -1 && canClose) {
+          e.preventDefault();
+          setIsCloseFocused(true);
+          closeButtonRef.current?.focus({ preventScroll: true });
+          return;
+        }
+
+        if (currentTab === 'tasks' && currentTasks.length > 0 && currentIndex >= 0) {
+          e.preventDefault();
+          const prevIdx = currentIndex - 1;
+          focusedTaskIndexRef.current = prevIdx;
+          setFocusedTaskIndex(prevIdx);
+          return;
+        }
+      }
+
+      // 5. ArrowDown: Move inside active tab's items (tasks)
       if (e.key === 'ArrowDown') {
         if (currentTab === 'tasks' && currentTasks.length > 0) {
           e.preventDefault();
@@ -189,17 +263,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         }
       }
 
-      if (e.key === 'ArrowUp') {
-        if (currentTab === 'tasks' && currentTasks.length > 0) {
-          e.preventDefault();
-          const prevIdx = Math.max(currentIndex - 1, -1);
-          focusedTaskIndexRef.current = prevIdx;
-          setFocusedTaskIndex(prevIdx);
-          return;
-        }
-      }
-
-      // 5. Enter or Space: Toggle focused task (check/uncheck)
+      // 6. Enter or Space: Toggle focused task (check/uncheck)
       if (e.key === 'Enter' || e.key === ' ') {
         if (currentTab === 'tasks' && currentTasks.length > 0 && currentIndex >= 0 && currentStatus !== 'closed') {
           const currentTask = currentTasks[currentIndex];
@@ -311,7 +375,11 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
             </button>
           </div>
         ) : (
-          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className={`mt-3 rounded-xl border p-3 transition-all duration-150 ${
+            isCloseFocused
+              ? 'border-emerald-400 bg-emerald-50/70 ring-2 ring-emerald-400/40 shadow-sm'
+              : 'border-slate-200 bg-slate-50'
+          }`}>
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-medium text-slate-600">משימות שהושלמו</span>
               <span className="font-bold text-slate-900">
@@ -334,19 +402,50 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
               />
             </div>
             {status === 'in_progress' && (
-              <button
-                type="button"
-                onClick={onCloseEvent}
-                disabled={!canCloseEvent}
-                className={`mt-3 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white transition ${
-                  canCloseEvent
-                    ? 'bg-emerald-700 hover:bg-emerald-800'
-                    : 'cursor-not-allowed bg-emerald-700/40'
-                }`}
-              >
-                <Check className="h-4 w-4" />
-                סגירת אירוע
-              </button>
+              <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  onClick={onCloseEvent}
+                  onFocus={() => {
+                    if (canCloseEvent) {
+                      isCloseFocusedRef.current = true;
+                      setIsCloseFocused(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    isCloseFocusedRef.current = false;
+                    setIsCloseFocused(false);
+                  }}
+                  disabled={!canCloseEvent}
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white transition-all duration-150 focus:outline-none ${
+                    isCloseFocused
+                      ? 'bg-emerald-800 ring-4 ring-emerald-500 ring-offset-2 ring-offset-white shadow-xl scale-[1.03]'
+                      : canCloseEvent
+                      ? 'bg-emerald-700 hover:bg-emerald-800 hover:shadow-md'
+                      : 'cursor-not-allowed bg-emerald-700/40'
+                  }`}
+                >
+                  <Check className={`h-4 w-4 ${isCloseFocused ? 'stroke-[3]' : ''}`} />
+                  <span>סגירת אירוע</span>
+                  {canCloseEvent && (
+                    <kbd
+                      className={`ms-1.5 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
+                        isCloseFocused
+                          ? 'bg-white text-emerald-900 border border-emerald-300'
+                          : 'bg-emerald-800/80 text-emerald-100 border border-emerald-600/50'
+                      }`}
+                    >
+                      Enter ↵
+                    </kbd>
+                  )}
+                </button>
+                {isCloseFocused && (
+                  <span className="text-xs font-bold text-emerald-700 animate-pulse select-none">
+                    ◄ לחץ Enter לסגירת האירוע
+                  </span>
+                )}
+              </div>
             )}
             {status === 'closed' && (
               <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-700">
