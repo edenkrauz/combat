@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronLeft } from 'lucide-react';
-import type { SectorGroup } from '../types/event';
+import type { EventItem, SectorGroup } from '../types/event';
 import { EventCard } from './EventCard';
 
 interface SectorAccordionProps {
   sector: SectorGroup;
   defaultExpanded?: boolean;
+  selectedEventId?: string | null;
+  onSelectEvent: (event: EventItem) => void;
 }
 
 export const SectorAccordion: React.FC<SectorAccordionProps> = ({
   sector,
   defaultExpanded = true,
+  selectedEventId,
+  onSelectEvent,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -66,7 +70,12 @@ export const SectorAccordion: React.FC<SectorAccordionProps> = ({
       {isExpanded && (
         <div className="mt-2 space-y-2.5">
           {sector.events.map((event) => (
-            <EventCard key={event.event_id} event={event} />
+            <EventCard
+              key={event.event_id}
+              event={event}
+              isSelected={selectedEventId === event.event_id}
+              onClick={() => onSelectEvent(event)}
+            />
           ))}
         </div>
       )}
