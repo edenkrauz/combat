@@ -33,3 +33,7 @@ body {
   display: none !important;
 }
 
+button, input, select, textarea {
+  direction: inherit;
+  font-family: inherit;
+}
