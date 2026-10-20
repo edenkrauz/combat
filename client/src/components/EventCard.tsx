@@ -4,9 +4,11 @@ import type { EventItem } from '../types/event';
 
 interface EventCardProps {
   event: EventItem;
+  isSelected?: boolean;
+  onClick?: () => void;
 }
 
-export const EventCard: React.FC<EventCardProps> = ({ event }) => {
+export const EventCard: React.FC<EventCardProps> = ({ event, isSelected = false, onClick }) => {
   // Threat badge color mapping based on threat severity / threat level
   const getThreatBadge = () => {
     switch (event.threat_severity) {
@@ -46,7 +48,21 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   };
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs hover:border-slate-300 transition-all text-right">
+    <article
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      className={`rounded-lg border bg-white p-3.5 shadow-xs hover:border-blue-300 transition-all text-right cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+        isSelected ? 'border-blue-400 ring-1 ring-blue-200' : 'border-slate-200'
+      }`}
+    >
       {/* 1. Top Header: Title & Threat badge */}
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-bold text-slate-800 text-[15px] leading-tight flex-1">
