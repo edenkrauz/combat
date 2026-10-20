@@ -1,12 +1,5 @@
 import type { DbEvent } from '../types/event';
-import pg from 'pg';
-
-const { Pool } = pg;
-
-// Optional PG Pool: reads standard PG environment variables or DATABASE_URL
-const pool = process.env.DATABASE_URL
-  ? new Pool({ connectionString: process.env.DATABASE_URL })
-  : null;
+import { pool } from './pool';
 
 // Mock in-memory events store matching schemas.html
 let memoryEvents: DbEvent[] = [

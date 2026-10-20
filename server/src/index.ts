@@ -1,6 +1,8 @@
+import 'dotenv/config'
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { eventsRepository } from './db/eventsRepository';
+import { auditLogRepository } from './db/auditLogRepository';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -43,6 +45,19 @@ app.get('/api/events/:event_id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching event:', error);
     res.status(500).json({ error: 'Failed to fetch event' });
+  }
+});
+
+// GET /api/audit-log - fetch audit log entries for a mode (reality_id) and sector
+app.get('/api/audit-log', async (req: Request, res: Response) => {
+  try {
+    const realityId = Number(req.query.reality_id) || 0;
+    const sector = typeof req.query.sector === 'string' ? req.query.sector : undefined;
+    const entries = await auditLogRepository.getEntries(realityId, sector);
+    res.json(entries);
+  } catch (error) {
+    console.error('Error fetching audit log:', error);
+    res.status(500).json({ error: 'Failed to fetch audit log' });
   }
 });
 
