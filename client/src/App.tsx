@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TopNavbar, type OperationalMode } from './components/TopNavbar';
 import { OperationalBanner } from './components/OperationalBanner';
 import { ChecklistTemplatesModal } from './components/ChecklistTemplatesModal';
+import { StatisticsModal } from './components/StatisticsModal';
 import { EventsPanel } from './components/EventsPanel';
 import { Map } from './components/Map';
 import { mockSectorsData } from './data/mockEvents';
@@ -12,6 +13,7 @@ export const App: React.FC = () => {
   const allEvents = mockSectorsData.flatMap((s) => s.events);
   const [operationalMode, setOperationalMode] = useState<OperationalMode>('real');
   const [isChecklistsOpen, setIsChecklistsOpen] = useState(false);
+  const [isStatisticsOpen, setIsStatisticsOpen] = useState(false);
 
   return (
     <div className="h-screen w-screen bg-[#f3f5f8] flex flex-col font-sans transition-colors overflow-hidden dark:bg-slate-950" dir="rtl">
@@ -24,6 +26,7 @@ export const App: React.FC = () => {
         mode={operationalMode}
         onModeChange={setOperationalMode}
         onOpenChecklists={() => setIsChecklistsOpen(true)}
+        onOpenStatistics={() => setIsStatisticsOpen(true)}
       />
 
       {/* Operational alert strip directly under the navbar */}
@@ -44,6 +47,15 @@ export const App: React.FC = () => {
         isOpen={isChecklistsOpen}
         onClose={() => setIsChecklistsOpen(false)}
       />
+
+      {/* Statistics Modal Popup */}
+      <StatisticsModal
+        isOpen={isStatisticsOpen}
+        onClose={() => setIsStatisticsOpen(false)}
+        title="סטטיסטיקה"
+      >
+        {/* TODO: analysts dashboard */}
+      </StatisticsModal>
     </div>
   );
 };
