@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import type { OperationalMode } from './TopNavbar';
 
@@ -8,27 +9,21 @@ interface AuditLogModalProps {
   mode: OperationalMode;
 }
 
-interface LogEntry {
-  id: string;
-  time: string; // Local ISO 8601, e.g. "2026-10-20T12:52:00"
-  user: string; // Operator name or "מערכת" for automatic actions
+/**
+ * Audit log row as returned by GET /api/audit-log (audit_log table).
+ */
+interface AuditLogEntry {
+  log_id: string; // BIGINT PK, sent as string
+  occurred_at: string; // ISO 8601 UTC
+  user_name: string; // Operator name or "מערכת" for automatic actions
   event_id: string | null; // NULL = action not tied to an event
   action: string;
 }
 
-// Local mock data until the audit log is connected to the DB
-const AUDIT_LOGS: LogEntry[] = [
-  { id: 'log-10', time: '2026-10-20T12:52:00', user: 'ד. כהן', event_id: null, action: 'מעבר למצב אמת' },
-  { id: 'log-9', time: '2026-10-20T12:40:00', user: 'מערכת', event_id: 'INC-2060', action: 'האירוע נקלט בזמן אמת מ-1 מקורות' },
-  { id: 'log-8', time: '2026-10-20T12:30:00', user: 'ד. כהן', event_id: 'INC-2051', action: 'המלצה: לבחון תגבור כוח חילוץ נוסף לאתר' },
-  { id: 'log-7', time: '2026-10-20T12:30:00', user: 'מערכת', event_id: 'INC-2070', action: 'האירוע נקלט מ-3 מקורות פומביים' },
-  { id: 'log-6', time: '2026-10-20T12:28:00', user: 'ד. כהן', event_id: 'INC-2051', action: 'צוותי חילוץ באתר; שני לכודים חולצו.' },
-  { id: 'log-5', time: '2026-10-20T12:26:00', user: 'ד. כהן', event_id: 'INC-2051', action: 'בוצע: הזנקת כוחות רפואה והצלה בהתאם לצורך.' },
-  { id: 'log-4', time: '2026-10-20T12:21:00', user: 'מערכת', event_id: 'INC-2051', action: 'סטטוס האירוע עודכן ל"בטיפול"' },
-  { id: 'log-3', time: '2026-10-20T12:15:00', user: 'ר. לוי', event_id: null, action: "ניסיון עריכת תבנית צ'קליסט נחסם: אין הרשאה" },
-  { id: 'log-2', time: '2026-10-20T12:10:00', user: 'ד. כהן', event_id: null, action: 'התחברות למערכת' },
-  { id: 'log-1', time: '2026-10-20T12:05:00', user: 'מערכת', event_id: 'INC-2051', action: 'האירוע נקלט מ-2 מקורות' },
-];
+// reality_id per mode: 0 = real, non-zero for drill
+const REALITY_ID: Record<OperationalMode, number> = { real: 0, drill: 1 };
+
+type LoadState = 'loading' | 'ready' | 'error';
 
 // Format to DD/MM • HH:mm
 const formatTime = (iso: string) => {
@@ -41,6 +36,34 @@ const formatTime = (iso: string) => {
 };
 
 export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, sector, mode }) => {
+  const [entries, setEntries] = useState<AuditLogEntry[]>([]);
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+
+  // Reload whenever the modal opens or the sector / mode changes
+  useEffect(() => {
+    if (!isOpen) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ reality_id: String(REALITY_ID[mode]), sector });
+
+    setLoadState('loading');
+    fetch(`/api/audit-log?${params}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<AuditLogEntry[]>;
+      })
+      .then((rows) => {
+        setEntries(rows);
+        setLoadState('ready');
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error('Failed to load audit log:', error);
+        setLoadState('error');
+      });
+
+    return () => controller.abort();
+  }, [isOpen, sector, mode]);
+
   if (!isOpen) return null;
 
   return (
@@ -74,7 +97,8 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
 
         {/* Description Strip */}
         <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 text-sm text-slate-600 dark:bg-slate-850 dark:border-slate-800 dark:text-slate-300">
-          כל פעולה בגזרה, כולל ניסיונות שנחסמו. הרשומות לקריאה בלבד • {AUDIT_LOGS.length} רשומות.
+          כל פעולה בגזרה, כולל ניסיונות שנחסמו. הרשומות לקריאה בלבד
+          {loadState === 'ready' && ` • ${entries.length} רשומות.`}
         </div>
 
         {/* Log Entries Table */}
@@ -89,12 +113,24 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800 dark:divide-slate-800 dark:text-slate-200">
-              {AUDIT_LOGS.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="py-3.5 whitespace-nowrap tabular-nums">
-                    <span dir="ltr">{formatTime(entry.time)}</span>
+              {/* Loading / error / empty states */}
+              {(loadState !== 'ready' || entries.length === 0) && (
+                <tr>
+                  <td colSpan={4} className="py-10 text-center text-slate-500 dark:text-slate-400">
+                    {loadState === 'loading'
+                      ? 'טוען רשומות…'
+                      : loadState === 'error'
+                      ? 'לא ניתן לטעון את יומן הביקורת'
+                      : 'אין רשומות להצגה'}
                   </td>
-                  <td className="py-3.5 whitespace-nowrap">{entry.user}</td>
+                </tr>
+              )}
+              {loadState === 'ready' && entries.map((entry) => (
+                <tr key={entry.log_id}>
+                  <td className="py-3.5 whitespace-nowrap tabular-nums">
+                    <span dir="ltr">{formatTime(entry.occurred_at)}</span>
+                  </td>
+                  <td className="py-3.5 whitespace-nowrap">{entry.user_name}</td>
                   <td className="py-3.5 whitespace-nowrap text-slate-600 dark:text-slate-400">
                     {entry.event_id ?? '—'}
                   </td>
