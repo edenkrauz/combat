@@ -215,13 +215,13 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="חיפוש לפי כותרת, מיקום, תיאור או מזהה"
-              className="w-full pr-9 pl-8 py-2 text-xs bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 focus:border-blue-500 rounded-xl outline-none transition-colors text-slate-800 placeholder:text-slate-400"
+              className="h-10 w-full pr-9 pl-8 text-xs bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 focus:border-blue-500 rounded-xl outline-none transition-colors text-slate-800 placeholder:text-slate-400"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
                 title="נקה חיפוש"
               >
                 <X className="w-3.5 h-3.5" />
@@ -235,7 +235,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             onClick={() => setIsFilterOpen((prev) => !prev)}
             aria-expanded={isFilterOpen}
             title={isFilterOpen ? 'הסתר סינון מתקדם' : 'הצג סינון מתקדם'}
-            className={`relative p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+            className={`relative h-10 w-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
               isFilterOpen
                 ? 'bg-blue-50 border-blue-300 text-blue-600 shadow-xs'
                 : hasSecondaryFilters
@@ -272,7 +272,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
         <div
           className={`transition-all duration-300 ease-in-out overflow-hidden ${
             isFilterOpen
-              ? 'max-h-[420px] opacity-100 mt-3 pt-3 border-t border-slate-100'
+              ? 'max-h-[460px] opacity-100 mt-3 pt-3 border-t border-slate-100'
               : 'max-h-0 opacity-0 pointer-events-none mt-0 pt-0'
           }`}
         >
@@ -288,7 +288,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full text-xs py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer"
+                  className="h-10 w-full text-xs px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer"
                 />
               </div>
 
@@ -301,7 +301,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full text-xs py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer"
+                  className="h-10 w-full text-xs px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer"
                 />
               </div>
             </div>
@@ -317,14 +317,14 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
                   <select
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full text-xs py-1.5 pr-2.5 pl-6 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
+                    className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
                   >
                     <option value="all">הכול</option>
                     <option value="open">פתוח</option>
                     <option value="in_progress">בטיפול</option>
                     <option value="closed">סגור</option>
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
 
@@ -337,14 +337,14 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
                   <select
                     value={selectedUrgency}
                     onChange={(e) => setSelectedUrgency(e.target.value)}
-                    className="w-full text-xs py-1.5 pr-2.5 pl-6 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
+                    className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
                   >
                     <option value="all">הכול</option>
                     <option value="high">גבוהה</option>
                     <option value="medium">בינונית</option>
                     <option value="low">נמוכה</option>
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -358,7 +358,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
                 <select
                   value={selectedEventType}
                   onChange={(e) => setSelectedEventType(e.target.value)}
-                  className="w-full text-xs py-1.5 pr-2.5 pl-6 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
+                  className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
                 >
                   <option value="all">הכול</option>
                   {availableEventTypes.map((type) => (
@@ -367,7 +367,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
