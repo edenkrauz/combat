@@ -13,7 +13,9 @@ interface EventCardProps {
 export const EventCard: React.FC<EventCardProps> = ({
   event,
   isSelected = false,
+  isFocused = false,
   onClick,
+  onFocus,
 }) => {
   // Threat / Urgency badge mapping
   const getThreatBadge = () => {
@@ -69,9 +71,22 @@ export const EventCard: React.FC<EventCardProps> = ({
 
   return (
     <article
+      id={`event-card-${event.event_id}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
       onClick={onClick}
-      className={`rounded-xl p-3.5 transition-all text-right cursor-pointer select-none ${
-        isSelected
+      onFocus={onFocus}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+      className={`rounded-xl p-3.5 transition-all text-right cursor-pointer select-none focus:outline-none ${
+        isFocused
+          ? 'border-blue-500 ring-2 ring-blue-500 shadow-md bg-blue-50/30'
+          : isSelected
           ? 'border-[1.5px] border-[#3b82f6] bg-[#eff6ff] shadow-xs'
           : 'border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
       }`}

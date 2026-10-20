@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Pencil,
@@ -34,11 +34,19 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   onClose,
   onUpdateEvent,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('details');
-  const [isEditing, setIsEditing] = useState(false);
-
   // Editable event state
   const [currentEvent, setCurrentEvent] = useState<EventItem>(event);
+
+  // If event is already in_progress, open on 'tasks'; if open, open ready for treatment
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    event.status === 'in_progress' ? 'tasks' : 'details'
+  );
+  const [isEditing, setIsEditing] = useState(false);
+  const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(
+    event.status === 'in_progress' ? 0 : -1
+  );
+  const [isStartFocused, setIsStartFocused] = useState<boolean>(event.status === 'open');
+  const [isCloseFocused, setIsCloseFocused] = useState<boolean>(false);
 
   // Tasks state (no numbers)
   const [tasks, setTasks] = useState<OperationalTask[]>([
@@ -47,6 +55,24 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     { id: 't3', text: 'הזנקת מד"א וגורמי רפואה למתן טיפול מיידי', completed: false },
     { id: 't4', text: 'תיאום מול משטרת מחוז ופיקוד העורף', completed: false },
   ]);
+
+  const TABS: TabKey[] = ['details', 'tasks', 'updates', 'history'];
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const focusedTaskIndexRef = useRef(focusedTaskIndex);
+  focusedTaskIndexRef.current = focusedTaskIndex;
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const isStartFocusedRef = useRef(isStartFocused);
+  isStartFocusedRef.current = isStartFocused;
+  const isCloseFocusedRef = useRef(isCloseFocused);
+  isCloseFocusedRef.current = isCloseFocused;
+  const currentEventRef = useRef(currentEvent);
+  currentEventRef.current = currentEvent;
+  const startButtonRef = useRef<HTMLButtonElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const updateTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const recInputRef = useRef<HTMLInputElement | null>(null);
 
   // Recommendations state
   const [recommendations, setRecommendations] = useState<string[]>([]);
@@ -66,6 +92,265 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Reset & focus appropriately when event_id changes
+  useEffect(() => {
+    setCurrentEvent(event);
+    currentEventRef.current = event;
+    if (event.status === 'open') {
+      setIsStartFocused(true);
+      isStartFocusedRef.current = true;
+      setActiveTab('details');
+      activeTabRef.current = 'details';
+      setFocusedTaskIndex(-1);
+      focusedTaskIndexRef.current = -1;
+      startButtonRef.current?.focus({ preventScroll: true });
+    } else {
+      setIsStartFocused(false);
+      isStartFocusedRef.current = false;
+      setActiveTab('tasks');
+      activeTabRef.current = 'tasks';
+      setFocusedTaskIndex(0);
+      focusedTaskIndexRef.current = 0;
+    }
+    setIsCloseFocused(false);
+    isCloseFocusedRef.current = false;
+  }, [event.event_id]);
+
+  // Auto-scroll focused task into view
+  useEffect(() => {
+    if (activeTab !== 'tasks' || tasks.length === 0 || focusedTaskIndex < 0) return;
+    const task = tasks[focusedTaskIndex];
+    if (!task) return;
+    const taskEl = document.getElementById(`detail-task-${task.id}`);
+    if (taskEl) {
+      taskEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [focusedTaskIndex, activeTab, tasks]);
+
+  // Keyboard navigation for subtitles (ArrowLeft/ArrowRight), missions (ArrowDown/ArrowUp, Enter), and buttons
+  useEffect(() => {
+    const isTextInput = (el: HTMLElement | null): boolean => {
+      if (!el) return false;
+      if (el.isContentEditable) return true;
+      const tag = el.tagName;
+      if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (tag === 'INPUT') {
+        const inputType = (el as HTMLInputElement).type;
+        return inputType !== 'checkbox' && inputType !== 'radio' && inputType !== 'button';
+      }
+      return false;
+    };
+
+    const isModalOpen = (): boolean => {
+      try {
+        return Boolean(document.querySelector('[role="dialog"], .backdrop-blur-sm'));
+      } catch {
+        return false;
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput = isTextInput(target);
+      if (isModalOpen()) return;
+
+      const curTab = activeTabRef.current;
+      const curTasks = tasksRef.current;
+      const curTaskIdx = focusedTaskIndexRef.current;
+      const startFocused = isStartFocusedRef.current;
+      const closeFocused = isCloseFocusedRef.current;
+      const curEvent = currentEventRef.current;
+      const canClose = curEvent.status === 'in_progress' && curTasks.every((t) => t.completed);
+
+      // If user is typing in text inputs or textarea, let Escape return focus to subtitles
+      if (isInput) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          target?.blur();
+        }
+        return;
+      }
+
+      // Escape: close details panel
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+
+      // 1. When focus is on "התחלת טיפול" (black button):
+      if (startFocused) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleStartHandling();
+          return;
+        }
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setIsStartFocused(false);
+          isStartFocusedRef.current = false;
+          return;
+        }
+
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          setIsStartFocused(false);
+          isStartFocusedRef.current = false;
+          const tabIndex = TABS.indexOf(curTab);
+          const nextIndex =
+            e.key === 'ArrowLeft'
+              ? Math.min(tabIndex + 1, TABS.length - 1)
+              : Math.max(tabIndex - 1, 0);
+          const nextTab = TABS[nextIndex];
+          activeTabRef.current = nextTab;
+          setActiveTab(nextTab);
+          focusedTaskIndexRef.current = -1;
+          setFocusedTaskIndex(-1);
+          return;
+        }
+        return;
+      }
+
+      // 2. When focus is on "סגירת אירוע" (green button):
+      if (closeFocused) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (canClose) {
+            handleStatusChange('closed');
+          }
+          setIsCloseFocused(false);
+          isCloseFocusedRef.current = false;
+          return;
+        }
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setIsCloseFocused(false);
+          isCloseFocusedRef.current = false;
+          return;
+        }
+
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          setIsCloseFocused(false);
+          isCloseFocusedRef.current = false;
+          const tabIndex = TABS.indexOf(curTab);
+          const nextIndex =
+            e.key === 'ArrowLeft'
+              ? Math.min(tabIndex + 1, TABS.length - 1)
+              : Math.max(tabIndex - 1, 0);
+          const nextTab = TABS[nextIndex];
+          activeTabRef.current = nextTab;
+          setActiveTab(nextTab);
+          focusedTaskIndexRef.current = -1;
+          setFocusedTaskIndex(-1);
+          return;
+        }
+        return;
+      }
+
+      // 3. ArrowLeft / ArrowRight: Subtitles (tabs) navigation in RTL
+      // details (0, right), tasks (1), updates (2), history (3, left)
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const tabIndex = TABS.indexOf(curTab);
+        const nextIndex = Math.min(tabIndex + 1, TABS.length - 1);
+        const nextTab = TABS[nextIndex];
+        activeTabRef.current = nextTab;
+        setActiveTab(nextTab);
+        focusedTaskIndexRef.current = -1;
+        setFocusedTaskIndex(-1);
+        return;
+      }
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const tabIndex = TABS.indexOf(curTab);
+        const prevIndex = Math.max(tabIndex - 1, 0);
+        const prevTab = TABS[prevIndex];
+        activeTabRef.current = prevTab;
+        setActiveTab(prevTab);
+        focusedTaskIndexRef.current = -1;
+        setFocusedTaskIndex(-1);
+        return;
+      }
+
+      // 4. ArrowUp:
+      // If we are on subtitles level (curTaskIdx === -1):
+      // - If status === 'open': go UP to "התחלת טיפול"!
+      // - If status === 'in_progress' and canClose: go UP to "סגירת אירוע"!
+      if (e.key === 'ArrowUp') {
+        if (curTaskIdx === -1) {
+          if (curEvent.status === 'open') {
+            e.preventDefault();
+            setIsStartFocused(true);
+            isStartFocusedRef.current = true;
+            startButtonRef.current?.focus({ preventScroll: true });
+            return;
+          }
+          if (canClose) {
+            e.preventDefault();
+            setIsCloseFocused(true);
+            isCloseFocusedRef.current = true;
+            closeButtonRef.current?.focus({ preventScroll: true });
+            return;
+          }
+        }
+
+        if (curTab === 'tasks' && curTasks.length > 0 && curTaskIdx >= 0) {
+          e.preventDefault();
+          const prevIdx = curTaskIdx - 1;
+          focusedTaskIndexRef.current = prevIdx;
+          setFocusedTaskIndex(prevIdx);
+          return;
+        }
+      }
+
+      // 5. ArrowDown:
+      // If on 'tasks': moves into tasks (index 0, 1, 2...)
+      // If on 'updates': moves into textarea to write an update!
+      if (e.key === 'ArrowDown') {
+        if (curTab === 'tasks' && curTasks.length > 0) {
+          e.preventDefault();
+          const nextIdx = curTaskIdx < 0 ? 0 : Math.min(curTaskIdx + 1, curTasks.length - 1);
+          focusedTaskIndexRef.current = nextIdx;
+          setFocusedTaskIndex(nextIdx);
+          return;
+        }
+
+        if (curTab === 'updates') {
+          e.preventDefault();
+          updateTextareaRef.current?.focus();
+          return;
+        }
+      }
+
+      // 6. Enter or Space:
+      // If in 'tasks' tab and a task is focused: toggle task!
+      // If status === 'open' and on subtitles: start treatment!
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (curTab === 'tasks' && curTasks.length > 0 && curTaskIdx >= 0) {
+          const curTask = curTasks[curTaskIdx];
+          if (curTask) {
+            e.preventDefault();
+            handleToggleTask(curTask.id);
+            return;
+          }
+        }
+
+        if (curEvent.status === 'open' && curTaskIdx === -1) {
+          e.preventDefault();
+          handleStartHandling();
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const formatElapsedTimer = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -78,6 +363,9 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
     );
+    if (currentEventRef.current.status === 'open') {
+      handleStatusChange('in_progress');
+    }
   };
 
   const completedTasksCount = tasks.filter((t) => t.completed).length;
@@ -109,8 +397,19 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   // Status transitions
   const handleStatusChange = (newStatus: EventStatus) => {
     const updated = { ...currentEvent, status: newStatus };
+    currentEventRef.current = updated;
     setCurrentEvent(updated);
     onUpdateEvent?.(updated);
+  };
+
+  const handleStartHandling = () => {
+    handleStatusChange('in_progress');
+    setIsStartFocused(false);
+    isStartFocusedRef.current = false;
+    setActiveTab('tasks');
+    activeTabRef.current = 'tasks';
+    setFocusedTaskIndex(0);
+    focusedTaskIndexRef.current = 0;
   };
 
   // Edit form state
@@ -320,21 +619,83 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         </p>
 
         {currentEvent.status === 'open' ? (
-          <button
-            type="button"
-            onClick={() => handleStatusChange('in_progress')}
-            className="bg-[#131b2e] hover:bg-black active:bg-slate-900 text-white font-medium text-[13px] px-5 py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm shrink-0 whitespace-nowrap"
-          >
-            התחלת טיפול
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              ref={startButtonRef}
+              type="button"
+              onClick={handleStartHandling}
+              onFocus={() => {
+                setIsStartFocused(true);
+                isStartFocusedRef.current = true;
+              }}
+              onBlur={() => {
+                setIsStartFocused(false);
+                isStartFocusedRef.current = false;
+              }}
+              className={`font-medium text-[13px] px-5 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap focus:outline-none ${
+                isStartFocused
+                  ? 'bg-black ring-4 ring-slate-900/40 ring-offset-2 ring-offset-white shadow-xl scale-[1.03] text-white'
+                  : 'bg-[#131b2e] hover:bg-black active:bg-slate-900 text-white'
+              }`}
+            >
+              <span>התחלת טיפול</span>
+              <kbd
+                className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition ${
+                  isStartFocused
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                    : 'bg-slate-800 text-slate-200'
+                }`}
+              >
+                Enter ↵
+              </kbd>
+            </button>
+            {isStartFocused && (
+              <span className="text-xs font-bold text-slate-900 animate-pulse select-none">
+                ◄ לחץ Enter להתחלת טיפול
+              </span>
+            )}
+          </div>
         ) : currentEvent.status === 'in_progress' ? (
-          <button
-            type="button"
-            onClick={() => handleStatusChange('closed')}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-[13px] px-5 py-2.5 rounded-lg transition-colors cursor-pointer shadow-sm shrink-0 whitespace-nowrap"
-          >
-            סגירת אירוע
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={() => handleStatusChange('closed')}
+              onFocus={() => {
+                if (currentEvent.status === 'in_progress' && tasks.every((t) => t.completed)) {
+                  setIsCloseFocused(true);
+                  isCloseFocusedRef.current = true;
+                }
+              }}
+              onBlur={() => {
+                setIsCloseFocused(false);
+                isCloseFocusedRef.current = false;
+              }}
+              className={`font-medium text-[13px] px-5 py-2.5 rounded-lg transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap focus:outline-none ${
+                isCloseFocused
+                  ? 'bg-emerald-800 ring-4 ring-emerald-500 ring-offset-2 ring-offset-white shadow-xl scale-[1.03] text-white'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
+            >
+              <span>סגירת אירוע</span>
+              {tasks.every((t) => t.completed) && (
+                <kbd
+                  className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
+                    isCloseFocused
+                      ? 'bg-white text-emerald-900 border border-emerald-300'
+                      : 'bg-emerald-700 text-emerald-100'
+                  }`}
+                >
+                  Enter ↵
+                </kbd>
+              )}
+            </button>
+            {isCloseFocused && (
+              <span className="text-xs font-bold text-emerald-700 animate-pulse select-none">
+                ◄ לחץ Enter לסגירת האירוע
+              </span>
+            )}
+          </div>
         ) : (
           <button
             type="button"
@@ -347,7 +708,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       </div>
 
       {/* 7. TABS NAVIGATION */}
-      <div className="border-b border-slate-200 flex items-center justify-between px-1 mb-4 text-xs font-semibold">
+      <div className="border-b border-slate-200 flex items-center justify-between px-1 mb-4 text-xs font-semibold flex-wrap gap-2">
         {/* Details Tab */}
         <button
           type="button"
@@ -408,6 +769,45 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             1
           </span>
         </button>
+
+        {/* Keyboard shortcut hint for tabs & missions */}
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 select-none ps-2" title="ניווט במקלדת">
+          {currentEvent.status === 'open' && (
+            <>
+              <span className="text-slate-800 font-bold">התחלת טיפול:</span>
+              <kbd className="px-1.5 py-0.2 bg-slate-900 text-white rounded font-mono text-[10px]">Enter</kbd>
+              <span className="text-slate-300 mx-0.5">•</span>
+            </>
+          )}
+          {currentEvent.status === 'in_progress' && tasks.every((t) => t.completed) && (
+            <>
+              <span className="text-emerald-700 font-bold">סגירת אירוע:</span>
+              <kbd className="px-1 py-0.2 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-mono text-[10px]">↑</kbd>
+              <span className="text-slate-300 mx-0.5">•</span>
+            </>
+          )}
+          <span>לשוניות:</span>
+          <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">←</kbd>
+          <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">→</kbd>
+          <span className="text-slate-300 mx-0.5">•</span>
+          {activeTab === 'tasks' ? (
+            <>
+              <span>משימות:</span>
+              <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↑</kbd>
+              <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↓</kbd>
+              <span className="text-slate-300 mx-0.5">•</span>
+              <kbd className="px-1.5 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">Enter</kbd>
+            </>
+          ) : activeTab === 'updates' ? (
+            <>
+              <span>לכתיבת עדכון:</span>
+              <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↓</kbd>
+              <span className="text-slate-300 mx-0.5">•</span>
+              <span>לשמירה:</span>
+              <kbd className="px-1.5 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">Enter</kbd>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {/* 8. TAB CONTENT */}
@@ -610,16 +1010,27 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </div>
 
           <div className="space-y-2">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => handleToggleTask(task.id)}
-                className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer ${
-                  task.completed
-                    ? 'border-emerald-200 bg-emerald-50/40 text-emerald-900'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
-              >
+            {tasks.map((task, index) => {
+              const isTaskFocused = activeTab === 'tasks' && index === focusedTaskIndex;
+              return (
+                <div
+                  key={task.id}
+                  id={`detail-task-${task.id}`}
+                  tabIndex={-1}
+                  onClick={() => {
+                    setFocusedTaskIndex(index);
+                    handleToggleTask(task.id);
+                  }}
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer focus:outline-none ${
+                    isTaskFocused
+                      ? task.completed
+                        ? 'border-emerald-500 ring-2 ring-emerald-500/80 bg-emerald-50/90 shadow-sm'
+                        : 'border-blue-500 ring-2 ring-blue-500/80 bg-blue-50/30 shadow-sm'
+                      : task.completed
+                      ? 'border-emerald-200 bg-emerald-50/40 text-emerald-900'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
                 {/* Checkbox only - no number */}
                 <div
                   className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition ${
@@ -637,7 +1048,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   </span>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       )}
@@ -669,6 +1081,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             {/* Input row */}
             <div className="flex gap-2">
               <input
+                ref={recInputRef}
                 type="text"
                 value={newRecommendationText}
                 onChange={(e) => setNewRecommendationText(e.target.value)}
@@ -695,10 +1108,17 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             {/* Textarea box */}
             <div className="bg-white border border-slate-200 rounded-xl p-3 mb-2.5">
               <textarea
+                ref={updateTextareaRef}
                 rows={3}
                 value={updatesText}
                 onChange={(e) => setUpdatesText(e.target.value)}
                 placeholder="תיעוד פעולה, ממצא או עדכון שהתקבל"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddUpdate();
+                  }
+                }}
                 className="w-full text-xs text-black placeholder:text-slate-400 focus:outline-none resize-none text-right"
               />
             </div>
@@ -710,7 +1130,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                 onClick={handleAddUpdate}
                 className="px-4 py-2 bg-[#8592a6] hover:bg-[#727e91] active:bg-[#606d80] text-white rounded-lg text-xs font-medium cursor-pointer transition shadow-2xs"
               >
-                הוספת עדכון
+                <span>הוספת עדכון</span>
+                <kbd className="ms-1.5 px-1.5 py-0.5 text-[10px] font-mono bg-white/20 text-white rounded">Enter ↵</kbd>
               </button>
             </div>
 
