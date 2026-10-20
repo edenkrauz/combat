@@ -7,7 +7,7 @@ import { EventsPanel } from './components/EventsPanel';
 import { Map } from './components/Map';
 import { mockSectorsData } from './data/mockEvents';
 
-const STATISTICS_DASHBOARD_URL = 'https://www.google.com';
+const STATISTICS_DASHBOARD_URL = 'https://www.google.com/webhp?igu=1';
 
 export const App: React.FC = () => {
 
@@ -56,7 +56,7 @@ export const App: React.FC = () => {
         onClose={() => setIsStatisticsOpen(false)}
         title="סטטיסטיקה"
         maxWidthClassName="max-w-5xl"
-        contentClassName="h-[70vh]"
+        contentClassName="h-[85vh]"
       >
         <iframe src={STATISTICS_DASHBOARD_URL} title="סטטיסטיקה" className="w-full h-full" />
       </StatisticsModal>
