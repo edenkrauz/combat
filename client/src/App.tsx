@@ -14,7 +14,7 @@ export const App: React.FC = () => {
   const [isChecklistsOpen, setIsChecklistsOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#f3f5f8] flex flex-col font-sans transition-colors dark:bg-slate-950" dir="rtl">
+    <div className="h-screen w-screen bg-[#f3f5f8] flex flex-col font-sans transition-colors overflow-hidden dark:bg-slate-950" dir="rtl">
       {/* 
         Top Navigation Bar with Combat Logo, Sector badge, dynamic Live Clock,
         Operational Actions (Checklists, Audit Log), Mode toggle (אמת / תרגיל),
@@ -30,11 +30,11 @@ export const App: React.FC = () => {
       <OperationalBanner mode={operationalMode} />
 
       {/* Main workspace: Events panel strictly positioned on the right */}
-      <main className="flex-1 p-4 flex justify-start items-start">
-        <div className="mr-0 ml-auto w-full max-w-[420px]">
+      <main className="flex-1 min-h-0 p-3.5 flex gap-3.5 items-stretch overflow-hidden">
+        <div className="w-full max-w-[420px] h-full flex flex-col shrink-0">
           <EventsPanel sectors={mockSectorsData} />
         </div>
-        <div className="flex-1 ps-4 h-[calc(100vh-2rem)] flex flex-col">
+        <div className="flex-1 h-full min-h-0 flex flex-col">
           <Map events={allEvents} sector={activeSector} />
         </div>
       </main>

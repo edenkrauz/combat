@@ -72,10 +72,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       className="w-full bg-white border-b border-slate-200 border-t-2 border-t-[#b91c1c] shadow-2xs select-none sticky top-0 z-50 transition-colors dark:bg-slate-900 dark:border-b-slate-800"
       dir="rtl"
     >
-      <div className="h-12 px-3.5 flex items-center justify-between gap-3">
+      <div className="h-12 px-3.5 flex items-center justify-between gap-3 relative">
         
         {/* Right Section: Logo, Title, Divider & Sector Pill */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 z-10">
           {/* Logo with Emblem & Title */}
           <div className="flex items-center gap-2">
             <img
@@ -109,10 +109,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </div>
 
         {/* Center Section: Live Date & Clock Container */}
-        <div className="flex items-center justify-center shrink-0">
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-auto">
           <div className="flex items-center gap-2 px-3 py-1 border border-slate-200/90 rounded-lg bg-white shadow-2xs text-xs text-slate-800 whitespace-nowrap dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
             {/* In RTL: Date on right, Clock on left */}
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
+            <span className="font-bold text-slate-900 dark:text-white">
               {formattedDate}
             </span>
             <span className="text-slate-300 font-light select-none dark:text-slate-600">|</span>
@@ -123,7 +123,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </div>
 
         {/* Left Section: Nav items, Mode Toggle, User, Dark Mode */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 z-10">
           
           {/* Navigation Action 1: Checklist Templates */}
           <button
