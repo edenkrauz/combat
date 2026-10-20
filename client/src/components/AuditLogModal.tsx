@@ -1,8 +1,11 @@
 import { X } from 'lucide-react';
+import type { OperationalMode } from './TopNavbar';
 
 interface AuditLogModalProps {
   isOpen: boolean;
   onClose: () => void;
+  sector: string; // e.g. "מרכז"
+  mode: OperationalMode;
 }
 
 interface LogEntry {
@@ -57,7 +60,7 @@ const AUDIT_LOGS: LogEntry[] = [
   },
 ];
 
-export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose }) => {
+export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, sector, mode }) => {
   if (!isOpen) return null;
 
   return (
@@ -67,14 +70,19 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[640px] bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 flex flex-col gap-4 text-right transition-all dark:bg-slate-900 dark:border-slate-800"
+        className="w-full max-w-[960px] bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 flex flex-col gap-4 text-right transition-all dark:bg-slate-900 dark:border-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-0.5">
-          <h2 className="text-[17px] font-bold text-slate-900 dark:text-white">
-            יומן ביקורת
-          </h2>
+          <div>
+            <h2 className="text-[17px] font-bold text-slate-900 dark:text-white">
+              יומן ביקורת
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5 dark:text-slate-400">
+              {sector} • {mode === 'real' ? 'מצב אמת' : 'מצב תרגיל'}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -88,48 +96,56 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
 
         {/* Info Banner Box */}
         <div className="w-full bg-[#f8fafc] border border-slate-200/90 rounded-xl py-2 px-3 text-center text-xs text-slate-600 font-normal dark:bg-slate-850 dark:border-slate-800 dark:text-slate-300">
-          תיעוד פעולות מפעילים, שינויי סטטוס והחלטות בחמ״ל בזמן אמת
+          כל פעולה בגזרה, כולל ניסיונות שנחסמו. הרשומות לקריאה בלבד • {AUDIT_LOGS.length} רשומות
         </div>
 
-        {/* Log Entries List */}
-        <div className="flex flex-col gap-2 min-h-[160px] max-h-[300px] overflow-y-auto pr-0.5">
-          {AUDIT_LOGS.map((entry) => (
-            <div
-              key={entry.id}
-              className="flex items-start gap-3 p-2.5 bg-white border border-slate-200/90 rounded-xl hover:border-slate-300 transition dark:bg-slate-850 dark:border-slate-800 dark:hover:border-slate-700"
-            >
-              <span className="font-mono text-xs font-semibold text-slate-500 shrink-0 pt-0.5 pr-1 dark:text-slate-400">
-                {entry.timestamp}
-              </span>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-slate-900 dark:text-white">
-                      {entry.action}
+        {/* Log Entries Table */}
+        <div className="min-h-[160px] max-h-[400px] overflow-y-auto border border-slate-200/90 rounded-xl dark:border-slate-800">
+          <table className="w-full text-xs text-right">
+            <thead className="sticky top-0 bg-slate-50 text-slate-500 font-semibold dark:bg-slate-800 dark:text-slate-400">
+              <tr>
+                <th className="px-3 py-2 font-semibold whitespace-nowrap">שעה</th>
+                <th className="px-3 py-2 font-semibold whitespace-nowrap">מבצע</th>
+                <th className="px-3 py-2 font-semibold whitespace-nowrap">פעולה</th>
+                <th className="px-3 py-2 font-semibold">פרטים</th>
+                <th className="px-3 py-2 font-semibold whitespace-nowrap">סוג</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {AUDIT_LOGS.map((entry) => (
+                <tr
+                  key={entry.id}
+                  className="align-top hover:bg-slate-50/70 transition dark:hover:bg-slate-800/50"
+                >
+                  <td className="px-3 py-2.5 font-mono font-semibold text-slate-500 whitespace-nowrap dark:text-slate-400">
+                    {entry.timestamp}
+                  </td>
+                  <td className="px-3 py-2.5 font-semibold text-slate-700 whitespace-nowrap dark:text-slate-200">
+                    {entry.operator}
+                  </td>
+                  <td className="px-3 py-2.5 font-bold text-slate-900 whitespace-nowrap dark:text-white">
+                    {entry.action}
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-600 leading-relaxed select-text dark:text-slate-300">
+                    {entry.details}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        entry.level === 'action'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                          : entry.level === 'warning'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {entry.level === 'action' ? 'פעולה מבצעית' : entry.level === 'warning' ? 'התרעה' : 'מידע'}
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      על ידי <strong className="text-slate-700 dark:text-slate-200">{entry.operator}</strong>
-                    </span>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      entry.level === 'action'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                        : entry.level === 'warning'
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    {entry.level === 'action' ? 'פעולה מבצעית' : entry.level === 'warning' ? 'התרעה' : 'מידע'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed select-text dark:text-slate-300">
-                  {entry.details}
-                </p>
-              </div>
-            </div>
-          ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Footer with Close Button on Right */}
