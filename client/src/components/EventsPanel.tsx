@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   X,
-  Calendar,
   ChevronDown,
   RotateCcw,
   Check,
@@ -87,8 +86,6 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedUrgency, setSelectedUrgency] = useState('all');
   const [selectedEventType, setSelectedEventType] = useState('all');
@@ -175,15 +172,11 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
 
   // Check if any secondary filters are active
   const hasSecondaryFilters =
-    Boolean(startDate) ||
-    Boolean(endDate) ||
     selectedStatus !== 'all' ||
     selectedUrgency !== 'all' ||
     selectedEventType !== 'all';
 
   const secondaryFiltersCount = [
-    Boolean(startDate),
-    Boolean(endDate),
     selectedStatus !== 'all',
     selectedUrgency !== 'all',
     selectedEventType !== 'all',
@@ -193,8 +186,6 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
 
   // Reset secondary filters only
   const resetSecondaryFilters = () => {
-    setStartDate('');
-    setEndDate('');
     setSelectedStatus('all');
     setSelectedUrgency('all');
     setSelectedEventType('all');
@@ -236,19 +227,6 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             }
           }
 
-          // 2. Date Range
-          if (startDate || endDate) {
-            const eventDateStr = event.start_time?.split('T')[0];
-            if (eventDateStr) {
-              if (startDate && eventDateStr < startDate) {
-                return false;
-              }
-              if (endDate && eventDateStr > endDate) {
-                return false;
-              }
-            }
-          }
-
           // 3. Status
           if (selectedStatus !== 'all') {
             if (effectiveStatus !== selectedStatus) {
@@ -287,8 +265,6 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
     sectors,
     workflows,
     searchQuery,
-    startDate,
-    endDate,
     selectedStatus,
     selectedUrgency,
     selectedEventType,
@@ -409,34 +385,6 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             }`}
           >
             <div className="space-y-3">
-              {/* Date Range: מתאריך / עד תאריך */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-slate-400" />
-                    <span>מתאריך</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="h-10 w-full text-xs px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-slate-400" />
-                    <span>עד תאריך</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="h-10 w-full text-xs px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer"
-                  />
-                </div>
-              </div>
 
               {/* Status & Urgency Level */}
               <div className="grid grid-cols-2 gap-2.5">

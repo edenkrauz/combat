@@ -44,6 +44,13 @@ export interface EventItem extends DbEvent {
   time_display?: string; // e.g. "19/10 • 10:38"
   threat_severity?: ThreatSeverity;
   threat_label?: string; // e.g. "סיכון גבוה"
+  code?: string;
+  categories?: string[];
+  involved_count?: number | null;
+  urgency_label?: string;
+  geo_location_hierarchy?: string;
+  exact_location?: string;
+  source_label?: string;
 }
 
 export interface SectorGroup {
