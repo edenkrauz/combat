@@ -17,3 +17,8 @@ export interface DbAuditLogEntry {
   action: string; // Human-readable text
   outcome: AuditOutcome;
 }
+
+/**
+ * Fields a caller provides when appending an entry (log_id and occurred_at are set by the DB).
+ */
+export type NewAuditLogEntry = Omit<DbAuditLogEntry, 'log_id' | 'occurred_at'>;
