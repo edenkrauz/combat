@@ -14,6 +14,8 @@ export const SectorAccordion: React.FC<SectorAccordionProps> = ({
   sector,
   defaultExpanded = true,
   selectedEventId,
+  focusedEventId,
+  onFocusEvent,
   onSelectEvent,
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);

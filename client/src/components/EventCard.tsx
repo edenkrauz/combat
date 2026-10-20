@@ -5,7 +5,9 @@ import type { EventItem } from '../types/event';
 interface EventCardProps {
   event: EventItem;
   isSelected?: boolean;
+  isFocused?: boolean;
   onClick?: () => void;
+  onFocus?: () => void;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({

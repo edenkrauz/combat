@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Check, Clock3, LockKeyhole, X } from 'lucide-react';
 import type { EventItem, EventStatus } from '../types/event';
 
@@ -50,6 +50,10 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   const [now, setNow] = useState(() => Date.now());
   const [editingNotes, setEditingNotes] = useState<Record<string, boolean>>({});
   const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
+  const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
+  const taskContainerRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const TABS: EventDetailTab[] = ['details', 'tasks', 'history'];
   const completedCount = tasks.filter((task) => completedTasks[task.id]).length;
   const progress = tasks.length === 0 ? 0 : Math.round((completedCount / tasks.length) * 100);
   const isHandling = status !== 'open';
@@ -64,8 +68,156 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
     return () => window.clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    panelRef.current?.focus({ preventScroll: true });
+    setFocusedTaskIndex(-1);
+  }, [event.event_id]);
+
+  // Keep mutable refs for keyboard listener to prevent stale closures
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const focusedTaskIndexRef = useRef(focusedTaskIndex);
+  focusedTaskIndexRef.current = focusedTaskIndex;
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  const onToggleTaskRef = useRef(onToggleTask);
+  onToggleTaskRef.current = onToggleTask;
+
+  // Auto-scroll and focus task inside the container
+  useEffect(() => {
+    if (activeTab !== 'tasks' || tasks.length === 0 || focusedTaskIndex < 0) return;
+    const task = tasks[focusedTaskIndex];
+    if (!task) return;
+    const taskEl = document.getElementById(`event-task-${task.id}`);
+    const container = taskContainerRef.current;
+    if (taskEl) {
+      taskEl.focus({ preventScroll: true });
+    }
+    if (taskEl && container) {
+      const containerRect = container.getBoundingClientRect();
+      const taskRect = taskEl.getBoundingClientRect();
+
+      if (taskRect.top < containerRect.top) {
+        container.scrollTo({
+          top: container.scrollTop - (containerRect.top - taskRect.top) - 10,
+          behavior: 'smooth',
+        });
+      } else if (taskRect.bottom > containerRect.bottom) {
+        container.scrollTo({
+          top: container.scrollTop + (taskRect.bottom - containerRect.bottom) + 10,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [focusedTaskIndex, activeTab, tasks]);
+
+  // Keyboard navigation for tabs (ArrowLeft/ArrowRight) and tasks (ArrowDown/ArrowUp, Enter/Space)
+  useEffect(() => {
+    const isTextInput = (el: HTMLElement | null): boolean => {
+      if (!el) return false;
+      if (el.isContentEditable) return true;
+      const tag = el.tagName;
+      if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (tag === 'INPUT') {
+        const inputType = (el as HTMLInputElement).type;
+        return inputType !== 'checkbox' && inputType !== 'radio' && inputType !== 'button';
+      }
+      return false;
+    };
+
+    const isModalOpen = (): boolean => {
+      try {
+        return Boolean(document.querySelector('[role="dialog"], .backdrop-blur-sm'));
+      } catch {
+        return false;
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Ignore if typing in text inputs or textareas (e.g. task notes)
+      const target = e.target as HTMLElement | null;
+      if (isTextInput(target)) {
+        return;
+      }
+
+      // 2. Ignore if any modal dialog is open
+      if (isModalOpen()) {
+        return;
+      }
+
+      const currentTab = activeTabRef.current;
+      const currentTasks = tasksRef.current;
+      const currentIndex = focusedTaskIndexRef.current;
+      const currentStatus = statusRef.current;
+
+      // 3. ArrowLeft / ArrowRight: Move between tabs (subtitles) in RTL
+      // In RTL: details (0, right), tasks (1, middle), history (2, left)
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const tabIndex = TABS.indexOf(currentTab);
+        const nextIndex = Math.min(tabIndex + 1, TABS.length - 1);
+        const nextTab = TABS[nextIndex];
+        activeTabRef.current = nextTab;
+        setActiveTab(nextTab);
+        focusedTaskIndexRef.current = -1;
+        setFocusedTaskIndex(-1);
+        return;
+      }
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const tabIndex = TABS.indexOf(currentTab);
+        const prevIndex = Math.max(tabIndex - 1, 0);
+        const prevTab = TABS[prevIndex];
+        activeTabRef.current = prevTab;
+        setActiveTab(prevTab);
+        focusedTaskIndexRef.current = -1;
+        setFocusedTaskIndex(-1);
+        return;
+      }
+
+      // 4. ArrowDown / ArrowUp: Move inside the active tab's items (tasks)
+      if (e.key === 'ArrowDown') {
+        if (currentTab === 'tasks' && currentTasks.length > 0) {
+          e.preventDefault();
+          const nextIdx = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, currentTasks.length - 1);
+          focusedTaskIndexRef.current = nextIdx;
+          setFocusedTaskIndex(nextIdx);
+          return;
+        }
+      }
+
+      if (e.key === 'ArrowUp') {
+        if (currentTab === 'tasks' && currentTasks.length > 0) {
+          e.preventDefault();
+          const prevIdx = Math.max(currentIndex - 1, -1);
+          focusedTaskIndexRef.current = prevIdx;
+          setFocusedTaskIndex(prevIdx);
+          return;
+        }
+      }
+
+      // 5. Enter or Space: Toggle focused task (check/uncheck)
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (currentTab === 'tasks' && currentTasks.length > 0 && currentIndex >= 0 && currentStatus !== 'closed') {
+          const currentTask = currentTasks[currentIndex];
+          if (currentTask) {
+            e.preventDefault();
+            onToggleTaskRef.current(currentTask.id);
+            return;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
-    <section className="flex h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
+    <section ref={panelRef} tabIndex={-1} className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs focus:outline-none">
       <header className="shrink-0 border-b border-slate-100 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -206,34 +358,49 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
         )}
       </header>
 
-      <nav className="flex shrink-0 items-center border-b border-slate-200 px-3" aria-label="פרטי אירוע">
-        {([
-          ['details', 'פרטים'],
-          ['tasks', 'משימות'],
-          ['history', 'טיפול ועדכונים'],
-        ] as const).map(([tab, label]) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            aria-current={activeTab === tab ? 'page' : undefined}
-            className={`border-b-2 px-3 py-3 text-sm font-semibold transition ${
-              activeTab === tab
-                ? 'border-slate-900 text-slate-900'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            {label}
-            {tab === 'tasks' && (
-              <span className="ms-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs">
-                {completedCount}/{tasks.length}
-              </span>
-            )}
-          </button>
-        ))}
+      <nav className="flex shrink-0 items-center justify-between border-b border-slate-200 px-3" aria-label="פרטי אירוע">
+        <div className="flex items-center">
+          {([
+            ['details', 'פרטים'],
+            ['tasks', 'משימות'],
+            ['history', 'טיפול ועדכונים'],
+          ] as const).map(([tab, label]) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              aria-current={activeTab === tab ? 'page' : undefined}
+              className={`border-b-2 px-3 py-3 text-sm font-semibold transition cursor-pointer ${
+                activeTab === tab
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {label}
+              {tab === 'tasks' && (
+                <span className="ms-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs">
+                  {completedCount}/{tasks.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Keyboard shortcut hint for tabs & missions */}
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 select-none ps-2" title="ניווט בלשוניות: ← → · ניווט במשימות: ↑ ↓ · סימון: Enter">
+          <span>לשוניות:</span>
+          <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">←</kbd>
+          <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">→</kbd>
+          <span className="text-slate-300 mx-0.5">•</span>
+          <span>משימות:</span>
+          <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↑</kbd>
+          <kbd className="px-1 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↓</kbd>
+          <span className="text-slate-300 mx-0.5">•</span>
+          <kbd className="px-1.5 py-0.2 bg-slate-50 rounded border border-slate-200 text-slate-600 font-mono text-[10px]">Enter / רווח</kbd>
+        </div>
       </nav>
 
-      <div className="flex-1 space-y-3 overflow-y-auto bg-white p-4">
+      <div ref={taskContainerRef} className="flex-1 min-h-0 space-y-3 overflow-y-auto bg-white p-4 custom-scrollbar">
         {activeTab === 'tasks' && (
           <>
             {!isHandling && (
@@ -242,24 +409,34 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
                 <span>יש להתחיל טיפול כדי לבצע משימות</span>
               </p>
             )}
-            {tasks.map((task) => {
+            {tasks.map((task, index) => {
               const isComplete = Boolean(completedTasks[task.id]);
+              const isFocused = activeTab === 'tasks' && index === focusedTaskIndex;
               return (
                 <article
                   key={task.id}
-                  className={`rounded-xl border p-3.5 transition ${
-                    isComplete
+                  id={`event-task-${task.id}`}
+                  tabIndex={-1}
+                  onFocus={() => setFocusedTaskIndex(index)}
+                  onClick={() => setFocusedTaskIndex(index)}
+                  className={`rounded-xl border p-3.5 transition cursor-pointer focus:outline-none ${
+                    isFocused
+                      ? isComplete
+                        ? 'border-emerald-500 ring-2 ring-emerald-500/80 bg-emerald-50/90 shadow-sm'
+                        : 'border-blue-500 ring-2 ring-blue-500/80 bg-blue-50/30 shadow-sm'
+                      : isComplete
                       ? 'border-emerald-200 bg-emerald-50'
-                      : 'border-slate-200 bg-white'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
                   <label className="flex cursor-pointer items-start gap-3 text-right">
                     <input
                       type="checkbox"
+                      tabIndex={-1}
                       checked={isComplete}
-                      disabled={!isHandling || status === 'closed'}
+                      disabled={status === 'closed'}
                       onChange={() => onToggleTask(task.id)}
-                      className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700 disabled:cursor-not-allowed"
+                      className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700 disabled:cursor-not-allowed cursor-pointer"
                     />
                     <span
                       className={`flex-1 text-sm font-semibold leading-relaxed ${
