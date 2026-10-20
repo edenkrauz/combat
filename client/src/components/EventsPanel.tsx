@@ -189,7 +189,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
       }
 
       // 2. Ignore if a modal dialog is open
-      if (document.querySelector('[role="dialog"], .fixed.z-\\[9999\\]')) {
+      if (document.querySelector('[role="dialog"], .backdrop-blur-sm')) {
         return;
       }
 
@@ -202,12 +202,17 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
         }
       }
 
-      // 4. Arrow navigation (ArrowDown / ArrowUp)
+      // When event details panel is open, it handles ArrowLeft, ArrowRight, ArrowDown, ArrowUp, and Enter
+      if (selectedEvent) {
+        return;
+      }
+
+      // 4. Arrow navigation (ArrowDown / ArrowUp) on events list
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         if (allVisibleEvents.length === 0) return;
         e.preventDefault();
 
-        const currentActiveId = focusedEventId ?? selectedEvent?.event_id;
+        const currentActiveId = focusedEventId;
         const currentIndex = allVisibleEvents.findIndex(
           (item) => item.event_id === currentActiveId
         );
@@ -226,17 +231,13 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
         const nextEvent = allVisibleEvents[nextIndex];
         if (nextEvent) {
           setFocusedEventId(nextEvent.event_id);
-          // If the details drawer is already open, immediately preview the new event
-          if (selectedEvent) {
-            setSelectedEvent(nextEvent);
-          }
         }
         return;
       }
 
       // 5. Enter: Open / Click the focused event
       if (e.key === 'Enter') {
-        const currentActiveId = focusedEventId ?? selectedEvent?.event_id;
+        const currentActiveId = focusedEventId;
         const currentEvent = allVisibleEvents.find((item) => item.event_id === currentActiveId);
         if (currentEvent) {
           e.preventDefault();
@@ -252,7 +253,6 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
         e.preventDefault();
         const first = allVisibleEvents[0];
         setFocusedEventId(first.event_id);
-        if (selectedEvent) setSelectedEvent(first);
         return;
       }
 
@@ -261,7 +261,6 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
         e.preventDefault();
         const last = allVisibleEvents[allVisibleEvents.length - 1];
         setFocusedEventId(last.event_id);
-        if (selectedEvent) setSelectedEvent(last);
         return;
       }
     };
@@ -322,6 +321,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({ sectors }) => {
             onToggleTask={(taskId) =>
               updateWorkflow(selectedEvent, (current) => ({
                 ...current,
+                status: current.status === 'open' ? 'in_progress' : current.status,
                 completedTasks: {
                   ...current.completedTasks,
                   [taskId]: !current.completedTasks[taskId],
