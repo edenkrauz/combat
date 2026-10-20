@@ -94,3 +94,19 @@ INSERT INTO events (
     20, 1
 )
 ON CONFLICT (reality_id, event_id) DO NOTHING;
+
+-- Seeds for audit log (Sector: מרכז). Skipped when the log already has rows, so re-running is safe
+INSERT INTO audit_log (reality_id, occurred_at, sector, actor_type, user_name, event_id, action_type, action, outcome)
+SELECT * FROM (VALUES
+    (0, '2026-10-20 12:05:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-104', 'event_ingested', 'האירוע נקלט מ-2 מקורות', 'success'),
+    (0, '2026-10-20 12:10:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', NULL, 'login', 'התחברות למערכת', 'success'),
+    (0, '2026-10-20 12:15:00+03'::timestamptz, 'מרכז', 'user', 'ר. לוי', NULL, 'checklist_template_edit', 'ניסיון עריכת תבנית צ''קליסט נחסם: אין הרשאה', 'blocked'),
+    (0, '2026-10-20 12:21:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-104', 'status_change', 'סטטוס האירוע עודכן ל"בטיפול"', 'success'),
+    (0, '2026-10-20 12:26:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'evt-104', 'checklist_task_done', 'בוצע: הזנקת כוחות רפואה והצלה בהתאם לצורך.', 'success'),
+    (0, '2026-10-20 12:28:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'evt-104', 'note_added', 'צוותי חילוץ באתר; שני לכודים חולצו.', 'success'),
+    (0, '2026-10-20 12:30:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-103', 'event_ingested', 'האירוע נקלט מ-3 מקורות פומביים', 'success'),
+    (0, '2026-10-20 12:30:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'evt-104', 'recommendation', 'המלצה: לבחון תגבור כוח חילוץ נוסף לאתר', 'success'),
+    (0, '2026-10-20 12:40:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-107', 'event_ingested', 'האירוע נקלט בזמן אמת מ-1 מקורות', 'success'),
+    (0, '2026-10-20 12:52:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', NULL, 'mode_change', 'מעבר למצב אמת', 'success')
+) AS seed (reality_id, occurred_at, sector, actor_type, user_name, event_id, action_type, action, outcome)
+WHERE NOT EXISTS (SELECT 1 FROM audit_log);

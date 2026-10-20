@@ -51,3 +51,34 @@ CREATE TABLE IF NOT EXISTS event_reports (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (reality_id, event_id, report_id)
 );
+
+-- 3. AUDIT_LOG table (יומן ביקורת)
+-- Backs the AuditLogModal table: זמן | משתמש | אירוע | פעולה
+CREATE TABLE IF NOT EXISTS audit_log (
+    log_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reality_id INT NOT NULL DEFAULT 0, -- 0 = real; non-zero for drill. Same meaning as events.reality_id
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- UTC. UI column: זמן
+    sector VARCHAR(100) NOT NULL, -- e.g. 'מרכז'. Modal shows one sector at a time
+    actor_type VARCHAR(20) NOT NULL CHECK (actor_type IN ('user', 'system')),
+    user_name VARCHAR(255) NOT NULL, -- e.g. 'ד. כהן' or 'מערכת'. UI column: משתמש
+    event_id VARCHAR(255), -- NULL = not tied to an event (login, mode change). UI column: אירוע
+    action_type VARCHAR(100) NOT NULL, -- Machine code, e.g. 'event_ingested', 'status_change', 'login'
+    action TEXT NOT NULL, -- Human-readable text. UI column: פעולה
+    outcome VARCHAR(20) NOT NULL DEFAULT 'success' CHECK (outcome IN ('success', 'blocked')), -- 'blocked' = ניסיון שנחסם
+    FOREIGN KEY (reality_id, event_id) REFERENCES events (reality_id, event_id)
+);
+
+-- Main read path: one sector + mode, newest first
+CREATE INDEX IF NOT EXISTS idx_audit_log_sector_time ON audit_log (reality_id, sector, occurred_at DESC);
+
+-- Read-only records: block UPDATE / DELETE so the log can't be rewritten
+CREATE OR REPLACE FUNCTION audit_log_prevent_change() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'audit_log is append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS audit_log_append_only ON audit_log;
+CREATE TRIGGER audit_log_append_only
+    BEFORE UPDATE OR DELETE ON audit_log
+    FOR EACH ROW EXECUTE FUNCTION audit_log_prevent_change();
