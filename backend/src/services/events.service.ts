@@ -6,7 +6,13 @@ const eventSelection = `
   e.reality_id,
   e.version,
   CASE e.status WHEN 'in_progress' THEN 'in progress' ELSE e.status END AS status,
-  e.categories,
+  ARRAY(
+    SELECT COALESCE(category.display_name, event_category.name)
+    FROM unnest(e.categories) WITH ORDINALITY AS event_category(name, position)
+    LEFT JOIN event_categories category
+      ON category.category_id::text = event_category.name
+    ORDER BY event_category.position
+  ) AS categories,
   e.is_deleted,
   e.title,
   e.description,

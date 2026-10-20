@@ -38,6 +38,7 @@ function isEventStatus(status: unknown): status is EventStatus {
  *           type: array
  *           items:
  *             type: string
+ *           description: Hebrew display names from event_categories.
  *         is_deleted:
  *           type: boolean
  *         title:
