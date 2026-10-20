@@ -23,6 +23,8 @@ export interface DbEvent {
   blue_death_count: number | null;
   threat_level: number; // 0–100
   deployed_forces: number;
+  lat?: number | null;
+  lng?: number | null;
   created_at: string; // ISO 8601 UTC
   updated_at: string; // ISO 8601 UTC
   // Optional embedding columns from DataForge DB
