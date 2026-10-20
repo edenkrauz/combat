@@ -65,7 +65,7 @@ export const EventDetailsPanel: React.FC<EventDetailsPanelProps> = ({
   }, []);
 
   return (
-    <section className="flex h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)] min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
+    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
       <header className="shrink-0 border-b border-slate-100 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

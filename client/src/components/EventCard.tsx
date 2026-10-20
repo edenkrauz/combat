@@ -5,10 +5,12 @@ import type { EventItem } from '../types/event';
 interface EventCardProps {
   event: EventItem;
   isSelected?: boolean;
+  isFocused?: boolean;
   onClick?: () => void;
+  onFocus?: () => void;
 }
 
-export const EventCard: React.FC<EventCardProps> = ({ event, isSelected = false, onClick }) => {
+export const EventCard: React.FC<EventCardProps> = ({ event, isSelected = false, isFocused = false, onClick, onFocus }) => {
   // Threat badge color mapping based on threat severity / threat level
   const getThreatBadge = () => {
     switch (event.threat_severity) {
@@ -49,18 +51,24 @@ export const EventCard: React.FC<EventCardProps> = ({ event, isSelected = false,
 
   return (
     <article
+      id={`event-card-${event.event_id}`}
       role="button"
       tabIndex={0}
       aria-pressed={isSelected}
       onClick={onClick}
+      onFocus={onFocus}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onClick?.();
         }
       }}
-      className={`rounded-lg border bg-white p-3.5 shadow-xs hover:border-blue-300 transition-all text-right cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-        isSelected ? 'border-blue-400 ring-1 ring-blue-200' : 'border-slate-200'
+      className={`rounded-lg border p-3.5 shadow-xs transition-all text-right cursor-pointer focus:outline-none ${
+        isFocused
+          ? 'border-blue-500 ring-2 ring-blue-500 shadow-md bg-blue-50/30'
+          : isSelected
+          ? 'border-blue-400 ring-1 ring-blue-200 bg-white'
+          : 'border-slate-200 bg-white hover:border-blue-300'
       }`}
     >
       {/* 1. Top Header: Title & Threat badge */}
