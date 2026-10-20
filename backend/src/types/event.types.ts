@@ -6,35 +6,22 @@ export interface EventRecord {
   reality_id: number;
   version: number;
   status: EventStatus;
-  event_type_id: string;
+  categories: string[];
   is_deleted: boolean;
   title: string;
-  description: string;
-  notes: string;
-  sector: string;
-  sector_description: string;
-  start_time: string;
-  red_injured_count: number;
-  red_death_count: number;
-  blue_injured_count: number;
-  blue_death_count: number;
-  threat_level: number;
-  deployed_forces: number;
+  description: string | null;
+  notes: string | null;
+  sector: string | null;
+  sector_description: string | null;
+  start_time: string | null;
+  red_injured_count: number | null;
+  red_death_count: number | null;
+  blue_injured_count: number | null;
+  blue_death_count: number | null;
+  threat_level: number | null;
+  deployed_forces: number | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface EventTypeRecord {
-  event_type_id: string;
-  display_name: string;
-  tasks: string[];
-}
-
-export interface EventData {
-  events: EventRecord[];
-  event_types: EventTypeRecord[];
-}
-
-export type EventResponse = EventRecord & {
-  event_type: EventTypeRecord | null;
-};
+export type EventResponse = EventRecord;

@@ -1,48 +1,57 @@
-import { readFile, writeFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { pool } from '../config/database.ts';
+import type { EventResponse, EventStatus } from '../types/event.types.ts';
 
-import type {
-  EventData,
-  EventRecord,
-  EventResponse,
-  EventStatus,
-} from '../types/event.types.ts';
+const eventSelection = `
+  e.event_id,
+  e.reality_id,
+  e.version,
+  CASE e.status WHEN 'in_progress' THEN 'in progress' ELSE e.status END AS status,
+  e.categories,
+  e.is_deleted,
+  e.title,
+  e.description,
+  e.notes,
+  e.sector,
+  e.sector_description,
+  e.start_time::text AS start_time,
+  e.red_injured_count,
+  e.red_death_count,
+  e.blue_injured_count,
+  e.blue_death_count,
+  e.threat_level,
+  e.deployed_forces,
+  e.created_at::text AS created_at,
+  e.updated_at::text AS updated_at
+`;
 
-const dataPath = fileURLToPath(new URL('../../data.json', import.meta.url));
-
-async function readData(): Promise<EventData> {
-  return JSON.parse(await readFile(dataPath, 'utf8')) as EventData;
-}
-
-function withEventType(data: EventData, event: EventRecord): EventResponse {
-  return {
-    ...event,
-    event_type:
-      data.event_types.find(
-        (eventType) => eventType.event_type_id === event.event_type_id,
-      ) ?? null,
-  };
+function toDatabaseStatus(status: EventStatus): string {
+  return status === 'in progress' ? 'in_progress' : status;
 }
 
 export async function getEvents(): Promise<EventResponse[]> {
-  const data = await readData();
-  return data.events
-    .filter((event) => !event.is_deleted)
-    .map((event) => withEventType(data, event));
+  const { rows } = await pool.query<EventResponse>(`
+    SELECT ${eventSelection}
+    FROM events e
+    WHERE e.is_deleted = false
+    ORDER BY e.start_time DESC
+  `);
+  return rows;
 }
 
 export async function getEvent(
   eventId: string,
   realityId: number,
 ): Promise<EventResponse | undefined> {
-  const data = await readData();
-  const event = data.events.find(
-    (item) =>
-      item.event_id === eventId &&
-      item.reality_id === realityId &&
-      !item.is_deleted,
+  const { rows } = await pool.query<EventResponse>(
+    `
+      SELECT ${eventSelection}
+      FROM events e
+      WHERE e.event_id = $1 AND e.reality_id = $2 AND e.is_deleted = false
+      LIMIT 1
+    `,
+    [eventId, realityId],
   );
-  return event ? withEventType(data, event) : undefined;
+  return rows[0];
 }
 
 export async function updateEventStatus(
@@ -50,19 +59,18 @@ export async function updateEventStatus(
   realityId: number,
   status: EventStatus,
 ): Promise<EventResponse | undefined> {
-  const data = await readData();
-  const event = data.events.find(
-    (item) =>
-      item.event_id === eventId &&
-      item.reality_id === realityId &&
-      !item.is_deleted,
+  const { rows } = await pool.query<EventResponse>(
+    `
+      WITH updated AS (
+        UPDATE events
+        SET status = $3, updated_at = CURRENT_TIMESTAMP
+        WHERE event_id = $1 AND reality_id = $2 AND is_deleted = false
+        RETURNING *
+      )
+      SELECT ${eventSelection}
+      FROM updated e
+    `,
+    [eventId, realityId, toDatabaseStatus(status)],
   );
-  if (!event) {
-    return undefined;
-  }
-
-  event.status = status;
-  event.updated_at = new Date().toISOString();
-  await writeFile(dataPath, `${JSON.stringify(data, null, 2)}\n`);
-  return withEventType(data, event);
+  return rows[0];
 }

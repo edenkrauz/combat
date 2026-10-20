@@ -1,11 +1,11 @@
 import { type Request, type Response, Router } from 'express';
 
-import { EVENT_STATUSES, type EventStatus } from '../types/event.types.ts';
 import {
   getEvent,
   getEvents,
   updateEventStatus,
 } from '../services/events.service.ts';
+import { EVENT_STATUSES, type EventStatus } from '../types/event.types.ts';
 
 const apiRouter = Router();
 
@@ -20,20 +20,6 @@ function isEventStatus(status: unknown): status is EventStatus {
  * @openapi
  * components:
  *   schemas:
- *     EventType:
- *       type: object
- *       required: [event_type_id, display_name, tasks]
- *       properties:
- *         event_type_id:
- *           type: string
- *           example: security_tension
- *         display_name:
- *           type: string
- *           example: Security tension
- *         tasks:
- *           type: array
- *           items:
- *             type: string
  *     Event:
  *       type: object
  *       properties:
@@ -48,45 +34,54 @@ function isEventStatus(status: unknown): status is EventStatus {
  *         status:
  *           type: string
  *           enum: [open, in progress, closed]
- *         event_type_id:
- *           type: string
+ *         categories:
+ *           type: array
+ *           items:
+ *             type: string
  *         is_deleted:
  *           type: boolean
  *         title:
  *           type: string
  *         description:
  *           type: string
+ *           nullable: true
  *         notes:
  *           type: string
+ *           nullable: true
  *         sector:
  *           type: string
+ *           nullable: true
  *         sector_description:
  *           type: string
+ *           nullable: true
  *         start_time:
  *           type: string
  *           format: date-time
+ *           nullable: true
  *         red_injured_count:
  *           type: integer
+ *           nullable: true
  *         red_death_count:
  *           type: integer
+ *           nullable: true
  *         blue_injured_count:
  *           type: integer
+ *           nullable: true
  *         blue_death_count:
  *           type: integer
+ *           nullable: true
  *         threat_level:
- *           type: integer
+ *           type: number
+ *           nullable: true
  *         deployed_forces:
- *           type: integer
+ *           type: number
+ *           nullable: true
  *         created_at:
  *           type: string
  *           format: date-time
  *         updated_at:
  *           type: string
  *           format: date-time
- *         event_type:
- *           allOf:
- *             - $ref: '#/components/schemas/EventType'
- *           nullable: true
  *     Error:
  *       type: object
  *       properties:
@@ -99,7 +94,7 @@ function isEventStatus(status: unknown): status is EventStatus {
  * /events:
  *   get:
  *     summary: List events
- *     description: Returns all non-deleted events with their category and task list.
+ *     description: Returns all non-deleted events with their categories.
  *     tags: [Events]
  *     responses:
  *       200:
@@ -126,7 +121,7 @@ apiRouter.get('/events', async (_: Request, res: Response) => {
  * /events/{eventId}/{realityId}:
  *   get:
  *     summary: Get an event
- *     description: Returns one non-deleted event and its category task list.
+ *     description: Returns one non-deleted event and its categories.
  *     tags: [Events]
  *     parameters:
  *       - name: eventId
