@@ -135,7 +135,7 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose })
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between dark:bg-slate-850 dark:border-slate-800">
+        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between dark:bg-slate-800/60 dark:border-slate-800">
           <span className="text-xs text-slate-500 dark:text-slate-400">
             מוצגות 5 פעולות אחרונות • תיעוד מאובטח
           </span>
