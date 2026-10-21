@@ -29,6 +29,40 @@ interface UpdateEntry {
   text: string;
 }
 
+const formatDateTime = (isoString?: string | null): string => {
+  if (!isoString) return '—';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month} • ${hours}:${minutes}`;
+  } catch {
+    return isoString;
+  }
+};
+
+const formatTimeAgo = (isoString?: string | null): string => {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const diffMs = Date.now() - d.getTime();
+    if (diffMs < 0) return 'עכשיו';
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'הרגע';
+    if (mins < 60) return `לפני ${mins} ד'`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `לפני ${hours} שע'`;
+    const days = Math.floor(hours / 24);
+    return `לפני ${days} ימים`;
+  } catch {
+    return '';
+  }
+};
+
 export const EventDetails: React.FC<EventDetailsProps> = ({
   event,
   onClose,
@@ -47,6 +81,19 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   );
   const [isStartFocused, setIsStartFocused] = useState<boolean>(event.status === 'open');
   const [isCloseFocused, setIsCloseFocused] = useState<boolean>(false);
+
+  // Edit form state
+  const [editTitle, setEditTitle] = useState(event.title);
+  const [editDesc, setEditDesc] = useState(event.description);
+  const [editBlueInjured, setEditBlueInjured] = useState<number | ''>(
+    event.blue_injured_count ?? ''
+  );
+  const [editBlueDead, setEditBlueDead] = useState<number | ''>(
+    event.blue_death_count ?? ''
+  );
+  const [editInvolved, setEditInvolved] = useState<number | ''>(
+    event.involved_count ?? ''
+  );
 
   // Tasks state (no numbers)
   const [tasks, setTasks] = useState<OperationalTask[]>([
@@ -82,10 +129,19 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   const [updatesText, setUpdatesText] = useState('');
   const [updatesList, setUpdatesList] = useState<UpdateEntry[]>([]);
 
-  // Elapsed handling timer (ticking from 00:16:52 per Image 2)
-  const [elapsedSeconds, setElapsedSeconds] = useState(16 * 60 + 52);
+  // Elapsed handling timer: calculate elapsed seconds since event start_time or created_at
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    const referenceTime = event.start_time || event.created_at;
+    if (referenceTime) {
+      const startTimeMs = new Date(referenceTime).getTime();
+      if (!isNaN(startTimeMs)) {
+        return Math.max(0, Math.floor((Date.now() - startTimeMs) / 1000));
+      }
+    }
+    return 0;
+  });
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
@@ -412,19 +468,6 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     focusedTaskIndexRef.current = 0;
   };
 
-  // Edit form state
-  const [editTitle, setEditTitle] = useState(currentEvent.title);
-  const [editDesc, setEditDesc] = useState(currentEvent.description);
-  const [editBlueInjured, setEditBlueInjured] = useState<number | ''>(
-    currentEvent.blue_injured_count ?? ''
-  );
-  const [editBlueDead, setEditBlueDead] = useState<number | ''>(
-    currentEvent.blue_death_count ?? ''
-  );
-  const [editInvolved, setEditInvolved] = useState<number | ''>(
-    currentEvent.involved_count ?? 80
-  );
-
   const handleSaveEdit = () => {
     const updated: EventItem = {
       ...currentEvent,
@@ -507,7 +550,14 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
 
         {/* Urgency Pill */}
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#fff0f3] text-[#b91c1c] border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
-          <span>{currentEvent.threat_label || 'דחיפות מיידי'}</span>
+          <span>
+            {currentEvent.threat_label ||
+              (currentEvent.threat_level >= 70
+                ? 'סיכון גבוה'
+                : currentEvent.threat_level >= 40
+                ? 'סיכון בינוני'
+                : 'סיכון נמוך')}
+          </span>
           <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-500"></span>
         </span>
 
@@ -523,7 +573,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           ))
         ) : (
           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200/60 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
-            • פח"ע
+            • {currentEvent.event_type || 'פח"ע'}
           </span>
         )}
       </div>
@@ -599,10 +649,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </span>
         </div>
 
-        {/* Left side: Red pill with text on right and red dot on left */}
+        {/* Left side: Red pill with duration info */}
         <div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-700 bg-[#fff0f3] border border-rose-200/90 whitespace-nowrap dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
-            <span>מעל 2 דקות</span>
+            <span>{elapsedSeconds >= 120 ? 'מעל 2 דקות' : 'עד 2 דקות'}</span>
             <span className="w-2 h-2 rounded-full bg-rose-600 dark:bg-rose-500"></span>
           </span>
         </div>
@@ -724,7 +774,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         >
           <span>משימות</span>
           <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700 font-mono font-medium dark:bg-slate-800 dark:text-slate-300">
-            {completedTasksCount}/4
+            {completedTasksCount}/{tasks.length}
           </span>
         </button>
 
@@ -819,7 +869,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   <div className="bg-white rounded-lg p-2 border border-blue-50 text-center dark:bg-slate-900/90 dark:border-blue-900/40">
                     <span className="block text-[11px] text-slate-700 dark:text-slate-300">פצועים</span>
                     <span className="text-xl font-bold text-black dark:text-white">
-                      {currentEvent.blue_injured_count ?? 4}
+                      {currentEvent.blue_injured_count ?? 0}
                     </span>
                   </div>
                   <div className="bg-white rounded-lg p-2 border border-blue-50 text-center dark:bg-slate-900/90 dark:border-blue-900/40">
@@ -877,7 +927,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                 מעורבים / מושפעים
               </span>
               <span className="text-2xl font-extrabold text-black mt-1 dark:text-white">
-                {currentEvent.involved_count ?? 80}
+                {currentEvent.involved_count ?? currentEvent.deployed_forces ?? 0}
               </span>
             </div>
 
@@ -887,7 +937,13 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                 רמת דחיפות
               </span>
               <span className="text-xl font-extrabold text-rose-700 mt-1 dark:text-rose-400">
-                {currentEvent.urgency_label || 'מיידי'}
+                {currentEvent.urgency_label ||
+                  currentEvent.threat_label ||
+                  (currentEvent.threat_level >= 70
+                    ? 'מיידי'
+                    : currentEvent.threat_level >= 40
+                    ? 'גבוהה'
+                    : 'רגילה')}
               </span>
             </div>
           </div>
@@ -910,7 +966,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <div className="flex items-center justify-between py-2.5 px-3">
                 <span className="text-slate-500 font-medium dark:text-slate-400">קטגוריות</span>
                 <span className="font-semibold text-black dark:text-slate-100">
-                  {currentEvent.categories?.join(' • ') || 'פח"ע • הפרות סדר ואלימות המונית'}
+                  {currentEvent.categories?.join(' • ') || currentEvent.event_type || 'פח"ע'}
                 </span>
               </div>
 
@@ -918,7 +974,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <div className="flex items-center justify-between py-2.5 px-3">
                 <span className="text-slate-500 font-medium dark:text-slate-400">מיקום גאוגרפי</span>
                 <span className="font-semibold text-black dark:text-slate-100">
-                  {currentEvent.geo_location_hierarchy || 'אסיה > ישראל > מרכז'}
+                  {currentEvent.geo_location_hierarchy || `ישראל > ${currentEvent.sector}`}
                 </span>
               </div>
 
@@ -926,7 +982,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <div className="flex items-center justify-between py-2.5 px-3">
                 <span className="text-slate-500 font-medium dark:text-slate-400">מיקום</span>
                 <span className="font-semibold text-black dark:text-slate-100">
-                  {currentEvent.exact_location || currentEvent.sector_description || 'כניסה לעיר, ירושלים'}
+                  {currentEvent.exact_location || currentEvent.sector_description || currentEvent.sector}
                 </span>
               </div>
 
@@ -950,10 +1006,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   זמן התרחשות
                 </span>
                 <span className="block text-xs font-bold text-black mt-1 dark:text-white">
-                  20/10 • 10:33
+                  {currentEvent.time_display || formatDateTime(currentEvent.start_time)}
                 </span>
                 <span className="block text-[10px] text-slate-400 mt-0.5 dark:text-slate-500">
-                  לפני 13 ד'
+                  {formatTimeAgo(currentEvent.start_time)}
                 </span>
               </div>
 
@@ -963,10 +1019,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   זמן קליטה במערכת
                 </span>
                 <span className="block text-xs font-bold text-black mt-1 dark:text-white">
-                  20/10 • 10:35
+                  {formatDateTime(currentEvent.created_at)}
                 </span>
                 <span className="block text-[10px] text-slate-400 mt-0.5 dark:text-slate-500">
-                  לפני 11 ד'
+                  {formatTimeAgo(currentEvent.created_at)}
                 </span>
               </div>
 
@@ -976,10 +1032,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   עדכון אחרון
                 </span>
                 <span className="block text-xs font-bold text-black mt-1 dark:text-white">
-                  20/10 • 10:41
+                  {formatDateTime(currentEvent.updated_at)}
                 </span>
                 <span className="block text-[10px] text-slate-400 mt-0.5 dark:text-slate-500">
-                  לפני 5 ד'
+                  {formatTimeAgo(currentEvent.updated_at)}
                 </span>
               </div>
             </div>
@@ -1159,16 +1215,16 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                   קליטה
                 </span>
                 <span className="font-mono text-xs text-black font-medium dark:text-slate-300">
-                  20/10 • 11:03
+                  {formatDateTime(currentEvent.created_at || currentEvent.start_time)}
                 </span>
               </div>
 
               <div className="font-bold text-black text-xs dark:text-white">
-                האירוע נקלט מ-3 מקורות פומביים
+                {currentEvent.notes || 'קליטת אירוע במערכת המבצעית'}
               </div>
 
               <div className="text-slate-500 text-[11.5px] dark:text-slate-400">
-                מערכת • קליטה אוטומטית
+                {currentEvent.source_label || 'מערכת • קליטה אוטומטית'}
               </div>
             </div>
           </div>
