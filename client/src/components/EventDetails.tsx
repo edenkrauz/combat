@@ -147,6 +147,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   // Editable event state
   const [currentEvent, setCurrentEvent] = useState<EventItem>(event);
   const [isStatusSaving, setIsStatusSaving] = useState(false);
+  const [isClosingEvent, setIsClosingEvent] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false);
 
@@ -274,11 +275,13 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   });
 
   useEffect(() => {
+    if (currentEvent.status === 'closed') return;
+
     const timer = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [currentEvent.status]);
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -658,6 +661,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     if (newStatus === currentEvent.status) return true;
 
     setIsStatusSaving(true);
+    setIsClosingEvent(newStatus === 'closed');
     setStatusError(null);
     try {
       const updated = onUpdateStatus
@@ -677,6 +681,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       return false;
     } finally {
       setIsStatusSaving(false);
+      setIsClosingEvent(false);
     }
   };
 
@@ -690,8 +695,9 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   };
 
   const confirmCloseEvent = async () => {
-    setIsCloseConfirmationOpen(false);
-    await handleStatusChange('closed');
+    if (await handleStatusChange('closed')) {
+      setIsCloseConfirmationOpen(false);
+    }
   };
 
   const handleStartHandling = async () => {
@@ -868,6 +874,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           <button
             type="button"
             onClick={() => handleStatusChange('open')}
+            disabled={isStatusSaving}
             className={`font-semibold cursor-pointer transition ${
               currentEvent.status === 'open'
                 ? 'text-black font-bold dark:text-white'
@@ -879,6 +886,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           <button
             type="button"
             onClick={() => handleStatusChange('in_progress')}
+            disabled={isStatusSaving}
             className={`font-semibold cursor-pointer transition ${
               currentEvent.status === 'in_progress'
                 ? 'text-black font-bold dark:text-white'
@@ -890,6 +898,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           <button
             type="button"
             onClick={requestCloseEvent}
+            disabled={isStatusSaving}
             className={`font-semibold cursor-pointer transition ${
               currentEvent.status === 'closed'
                 ? 'text-black font-bold dark:text-white'
@@ -939,6 +948,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               ref={startButtonRef}
               type="button"
               onClick={handleStartHandling}
+              disabled={isStatusSaving}
               onFocus={() => {
                 setIsStartFocused(true);
                 isStartFocusedRef.current = true;
@@ -1004,6 +1014,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           <button
             type="button"
             onClick={() => handleStatusChange('in_progress')}
+            disabled={isStatusSaving}
             className="bg-slate-200 hover:bg-slate-300 text-black font-medium text-[13px] px-4 py-2 rounded-lg transition cursor-pointer shrink-0 whitespace-nowrap dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white"
           >
             פתיחה מחדש
@@ -1882,7 +1893,9 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4 dark:bg-black/30"
           dir="rtl"
-          onClick={() => setIsCloseConfirmationOpen(false)}
+          onClick={() => {
+            if (!isStatusSaving) setIsCloseConfirmationOpen(false);
+          }}
         >
           <div
             role="dialog"
@@ -1927,6 +1940,22 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         checklistTasks={tasks}
         onClose={() => setIsClosedModalOpen(false)}
       />
+      {isClosingEvent && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/15 p-4 dark:bg-black/40"
+          dir="rtl"
+          role="dialog"
+          aria-modal="true"
+          aria-label="סגירת האירוע מתבצעת"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-5 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent dark:border-emerald-400 dark:border-t-transparent" />
+            <span className="text-sm font-semibold" role="status" aria-live="polite">
+              סוגר את האירוע...
+            </span>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
