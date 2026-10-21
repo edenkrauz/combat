@@ -39,6 +39,7 @@ export async function getEvents(): Promise<EventResponse[]> {
     SELECT ${eventSelection}
     FROM events e
     WHERE e.is_deleted = false
+      AND e.status IN ('open', 'in_progress')
     ORDER BY e.start_time DESC
   `);
   return rows;
@@ -70,7 +71,10 @@ export async function updateEventStatus(
       WITH updated AS (
         UPDATE events
         SET status = $3, updated_at = CURRENT_TIMESTAMP
-        WHERE event_id = $1 AND reality_id = $2 AND is_deleted = false
+        WHERE event_id = $1
+          AND reality_id = $2
+          AND is_deleted = false
+          AND (status <> 'closed' OR $3 = 'closed')
         RETURNING *
       )
       SELECT ${eventSelection}

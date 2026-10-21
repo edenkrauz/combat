@@ -479,6 +479,12 @@ apiRouter.get(
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: A closed event cannot be reopened.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 apiRouter.patch(
   '/events/:eventId/:realityId/status',
@@ -506,6 +512,10 @@ apiRouter.patch(
 
     const event = await updateEventStatus(eventId, realityId, status);
     if (!event) {
+      const existingEvent = await getEvent(eventId, realityId);
+      if (existingEvent?.status === 'closed' && status !== 'closed') {
+        return res.status(409).json({ error: 'A closed event cannot be reopened' });
+      }
       return res.status(404).json({ error: 'Event not found' });
     }
     return res.json(event);

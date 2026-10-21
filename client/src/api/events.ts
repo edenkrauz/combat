@@ -83,7 +83,13 @@ export async function getEvents(): Promise<EventItem[]> {
   if (!Array.isArray(payload)) {
     throw new Error('השרת החזיר רשימת אירועים לא תקינה');
   }
-  return (payload as ApiEvent[]).map(toEventItem);
+  return (payload as ApiEvent[])
+    .filter(
+      (event) =>
+        !event.is_deleted &&
+        (event.status === 'open' || event.status === 'in progress'),
+    )
+    .map(toEventItem);
 }
 
 export function updateEventStatus(

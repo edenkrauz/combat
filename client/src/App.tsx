@@ -45,7 +45,8 @@ export const App: React.FC = () => {
   }, [reloadCount]);
 
   const visibleEvents = events.filter((event) =>
-    operationalMode === 'real' ? event.reality_id === 0 : event.reality_id !== 0,
+    (event.status === 'open' || event.status === 'in_progress') &&
+    (operationalMode === 'real' ? event.reality_id === 0 : event.reality_id !== 0),
   );
   const sectorsState = visibleEvents.reduce<SectorGroup[]>((sectors, event) => {
     const sectorName = event.sector;
