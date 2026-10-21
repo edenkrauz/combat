@@ -74,24 +74,13 @@ const formatTimeAgo = (isoString?: string | null): string => {
   }
 };
 
+// Returns YYYY-MM-DD, the value format required by <input type="date">
 const getInitialDate = (isoString?: string | null): string => {
-  if (!isoString) {
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
-  try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return '21/10/2026';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  } catch {
-    return '21/10/2026';
-  }
+  const parsed = isoString ? new Date(isoString) : new Date();
+  const d = isNaN(parsed.getTime()) ? new Date() : parsed;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
 };
 
 const getInitialTime = (isoString?: string | null): string => {
@@ -783,7 +772,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           <button
             type="button"
             onClick={openEditModal}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-[#0a3a78] transition cursor-pointer shadow-2xs dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300 dark:hover:bg-slate-700"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-black transition cursor-pointer shadow-2xs dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300 dark:hover:bg-slate-700"
             title="עריכת אירוע"
           >
             <Pencil className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
@@ -1734,10 +1723,11 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                     </label>
                     <div className="relative">
                       <input
-                        type="text"
+                        type="date"
                         value={editDate}
                         onChange={(e) => setEditDate(e.target.value)}
-                        className="w-full h-10 pr-9 pl-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                        onClick={(e) => e.currentTarget.showPicker?.()}
+                        className="w-full h-10 pr-9 pl-3 rounded-lg border border-slate-200 text-sm text-slate-800 text-right cursor-pointer focus:outline-none focus:border-blue-500 [&::-webkit-calendar-picker-indicator]:hidden dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:[color-scheme:dark]"
                       />
                       <Calendar className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
@@ -1748,10 +1738,11 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                     </label>
                     <div className="relative">
                       <input
-                        type="text"
+                        type="time"
                         value={editTime}
                         onChange={(e) => setEditTime(e.target.value)}
-                        className="w-full h-10 pr-9 pl-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                        onClick={(e) => e.currentTarget.showPicker?.()}
+                        className="w-full h-10 pr-9 pl-3 rounded-lg border border-slate-200 text-sm text-slate-800 text-right cursor-pointer focus:outline-none focus:border-blue-500 [&::-webkit-calendar-picker-indicator]:hidden dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:[color-scheme:dark]"
                       />
                       <Clock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
