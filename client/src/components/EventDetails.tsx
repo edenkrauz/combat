@@ -7,6 +7,7 @@ import {
   Check,
 } from 'lucide-react';
 import type { EventItem, EventStatus } from '../types/event';
+import { EventSummaryModal } from './EventSummaryModal';
 
 interface EventDetailsProps {
   event: EventItem;
@@ -81,6 +82,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   );
   const [isStartFocused, setIsStartFocused] = useState<boolean>(event.status === 'open');
   const [isCloseFocused, setIsCloseFocused] = useState<boolean>(false);
+  const [isClosedModalOpen, setIsClosedModalOpen] = useState<boolean>(false);
 
   // Edit form state
   const [editTitle, setEditTitle] = useState(event.title);
@@ -458,10 +460,15 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
 
   // Status transitions
   const handleStatusChange = (newStatus: EventStatus) => {
+    // status changed
+    if (newStatus === 'closed') {
+      setIsClosedModalOpen(true);
+    }
     const updated = { ...currentEvent, status: newStatus };
     currentEventRef.current = updated;
     setCurrentEvent(updated);
     onUpdateEvent?.(updated);
+
   };
 
   const handleStartHandling = () => {
@@ -486,6 +493,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     };
     setCurrentEvent(updated);
     onUpdateEvent?.(updated);
+
     setIsEditing(false);
   };
 
@@ -1327,6 +1335,15 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </div>
         </div>
       )}
+      {/* 10. EVENT SUMMARY MODAL */}
+      <EventSummaryModal
+        isOpen={isClosedModalOpen}
+        event={currentEvent}
+        elapsedSeconds={elapsedSeconds}
+        closedBy="ד. כהן"
+        checklistTasks={tasks}
+        onClose={() => setIsClosedModalOpen(false)}
+      />
     </section>
   );
 };
