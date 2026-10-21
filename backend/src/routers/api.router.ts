@@ -1,6 +1,10 @@
 import { type Request, type Response, Router } from 'express';
 
 import {
+  addAuditLogEntry,
+  getAuditLogEntries,
+} from '../services/audit-log.service.ts';
+import {
   getEvent,
   getEvents,
   updateEvent,
@@ -13,6 +17,12 @@ import {
   getTaskCategory,
   moveCategoryTask,
 } from '../services/task-categories.service.ts';
+import {
+  AUDIT_ACTOR_TYPES,
+  AUDIT_OUTCOMES,
+  type AuditActorType,
+  type AuditOutcome,
+} from '../types/audit-log.types.ts';
 import {
   EVENT_STATUSES,
   type EventRecord,
@@ -633,6 +643,126 @@ apiRouter.patch(
     return res.json(event);
   },
 );
+
+/**
+ * @openapi
+ * /audit-log:
+ *   get:
+ *     summary: List audit log entries, newest first
+ *     tags: [Audit Log]
+ *     parameters:
+ *       - name: reality_id
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *       - name: sector
+ *         in: query
+ *         schema:
+ *           type: string
+ *       - name: event_id
+ *         in: query
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Audit log entries.
+ *   post:
+ *     summary: Append an audit log entry
+ *     tags: [Audit Log]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sector, actor_type, user_name, action_type, action]
+ *             properties:
+ *               reality_id:
+ *                 type: integer
+ *               sector:
+ *                 type: string
+ *               actor_type:
+ *                 type: string
+ *                 enum: [user, system]
+ *               user_name:
+ *                 type: string
+ *               event_id:
+ *                 type: string
+ *                 nullable: true
+ *               action_type:
+ *                 type: string
+ *               action:
+ *                 type: string
+ *               outcome:
+ *                 type: string
+ *                 enum: [success, blocked]
+ *     responses:
+ *       201:
+ *         description: The created entry.
+ *       400:
+ *         description: Missing or invalid fields, or unknown event_id.
+ */
+apiRouter.get('/audit-log', async (req: Request, res: Response) => {
+  const realityId = Number(req.query.reality_id ?? 0);
+  if (!Number.isInteger(realityId)) {
+    return res.status(400).json({ error: 'reality_id must be an integer' });
+  }
+  const sector =
+    typeof req.query.sector === 'string' && req.query.sector.trim()
+      ? req.query.sector
+      : undefined;
+  const eventId =
+    typeof req.query.event_id === 'string' && req.query.event_id.trim()
+      ? req.query.event_id
+      : undefined;
+  return res.json(await getAuditLogEntries(realityId, sector, eventId));
+});
+
+apiRouter.post('/audit-log', async (req: Request, res: Response) => {
+  const body: Record<string, unknown> =
+    typeof req.body === 'object' && req.body !== null ? req.body : {};
+  const isText = (value: unknown): value is string =>
+    typeof value === 'string' && value.trim() !== '';
+
+  const missing = ['sector', 'actor_type', 'user_name', 'action_type', 'action'].filter(
+    (key) => !isText(body[key]),
+  );
+  if (missing.length > 0) {
+    return res.status(400).json({ error: `Missing fields: ${missing.join(', ')}` });
+  }
+  if (!AUDIT_ACTOR_TYPES.includes(body.actor_type as AuditActorType)) {
+    return res.status(400).json({ error: `actor_type must be one of: ${AUDIT_ACTOR_TYPES.join(', ')}` });
+  }
+  const outcome = body.outcome ?? 'success';
+  if (!AUDIT_OUTCOMES.includes(outcome as AuditOutcome)) {
+    return res.status(400).json({ error: `outcome must be one of: ${AUDIT_OUTCOMES.join(', ')}` });
+  }
+  const realityId = Number(body.reality_id ?? 0);
+  if (!Number.isInteger(realityId)) {
+    return res.status(400).json({ error: 'reality_id must be an integer' });
+  }
+
+  try {
+    const entry = await addAuditLogEntry({
+      reality_id: realityId,
+      sector: body.sector as string,
+      actor_type: body.actor_type as AuditActorType,
+      user_name: body.user_name as string,
+      event_id: isText(body.event_id) ? body.event_id : null,
+      action_type: body.action_type as string,
+      action: body.action as string,
+      outcome: outcome as AuditOutcome,
+    });
+    return res.status(201).json(entry);
+  } catch (error) {
+    // 23503 = FK violation: event_id not in events for this reality_id
+    if ((error as { code?: string }).code === '23503') {
+      return res.status(400).json({ error: 'Unknown event_id' });
+    }
+    throw error;
+  }
+});
 
 apiRouter.use(analysisRouter);
 

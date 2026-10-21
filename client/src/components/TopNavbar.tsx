@@ -4,8 +4,6 @@ import {
   Clock,
   Menu,
   ChevronDown,
-  Moon,
-  Sun,
   ChartColumn,
 } from 'lucide-react';
 import combatEmblem from '../assets/combat-emblem.png';
@@ -18,6 +16,7 @@ interface TopNavbarProps {
   onModeChange?: (mode: OperationalMode) => void;
   currentSector?: string;
   onOpenChecklists?: () => void;
+  onOpenAuditLog?: () => void;
   onOpenStatistics?: () => void;
 }
 
@@ -36,6 +35,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onModeChange,
   currentSector = 'מרכז',
   onOpenChecklists,
+  onOpenAuditLog,
   onOpenStatistics,
 }) => {
   // Live ticking clock and current date
@@ -130,6 +130,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           {/* Navigation Action 2: Audit Log */}
           <button
             type="button"
+            onClick={onOpenAuditLog}
             className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-700 hover:text-slate-950 hover:bg-slate-100/80 rounded-lg transition cursor-pointer whitespace-nowrap dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-800"
             title="יומן ביקורת"
           >

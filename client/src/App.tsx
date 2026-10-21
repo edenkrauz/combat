@@ -3,6 +3,7 @@ import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { TopNavbar, type OperationalMode } from './components/TopNavbar';
 import { OperationalBanner } from './components/OperationalBanner';
 import { ChecklistTemplatesModal } from './components/ChecklistTemplatesModal';
+import { AuditLogModal } from './components/AuditLogModal';
 import { StatisticsModal } from './components/StatisticsModal';
 import { EventsPanel } from './components/EventsPanel';
 import { EventDetails } from './components/EventDetails';
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [operationalMode, setOperationalMode] = useState<OperationalMode>('real');
   const [isChecklistsOpen, setIsChecklistsOpen] = useState(false);
+  const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
   const [isEventsListOpen, setIsEventsListOpen] = useState(true);
 
   useEffect(() => {
@@ -139,6 +141,7 @@ export const App: React.FC = () => {
         mode={operationalMode}
         onModeChange={handleModeChange}
         onOpenChecklists={() => setIsChecklistsOpen(true)}
+        onOpenAuditLog={() => setIsAuditLogOpen(true)}
         onOpenStatistics={() => setIsStatisticsOpen(true)}
       />
 
@@ -264,6 +267,13 @@ export const App: React.FC = () => {
       <ChecklistTemplatesModal
         isOpen={isChecklistsOpen}
         onClose={() => setIsChecklistsOpen(false)}
+      />
+
+      {/* Audit Log Modal Popup */}
+      <AuditLogModal
+        isOpen={isAuditLogOpen}
+        onClose={() => setIsAuditLogOpen(false)}
+        mode={operationalMode}
       />
 
       {/* Statistics Modal Popup */}

@@ -1,150 +1,145 @@
-import { X, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
+import type { OperationalMode } from './TopNavbar';
 
 interface AuditLogModalProps {
   isOpen: boolean;
   onClose: () => void;
+  sector?: string; // omit to show all sectors
+  mode: OperationalMode;
 }
 
-interface LogEntry {
-  id: string;
-  timestamp: string;
-  operator: string;
+/**
+ * Audit log row as returned by GET /api/audit-log (audit_log table).
+ */
+interface AuditLogEntry {
+  log_id: string; // BIGINT PK, sent as string
+  occurred_at: string; // ISO 8601 UTC
+  user_name: string; // Operator name or "מערכת" for automatic actions
+  event_id: string | null; // NULL = action not tied to an event
   action: string;
-  details: string;
-  level: 'info' | 'warning' | 'action';
 }
 
-const AUDIT_LOGS: LogEntry[] = [
-  {
-    id: 'log-1',
-    timestamp: '15:05:10',
-    operator: 'ד. כהן',
-    action: 'עדכון סטטוס אירוע',
-    details: 'אירוע evt-101 (נפילה באזור תעשייה) עודכן לסטטוס "בטיפול". כוחות נוספים הוזנקו.',
-    level: 'action',
-  },
-  {
-    id: 'log-2',
-    timestamp: '14:58:32',
-    operator: 'מוקד 102',
-    action: 'קליטת דיווח מבצעי',
-    details: 'נפתח אירוע evt-103 (שריפה ליד מחלף גנות) בעקבות נפילת נפל בשטח פתוח.',
-    level: 'info',
-  },
-  {
-    id: 'log-3',
-    timestamp: '14:53:00',
-    operator: 'ד. כהן',
-    action: 'הקצאת כוחות',
-    details: 'אושר סד״כ של 4 צוותי כיבוי והצלה וצוות חבלנים לאזור בת ים.',
-    level: 'action',
-  },
-  {
-    id: 'log-4',
-    timestamp: '14:40:15',
-    operator: 'מערכת אוטומטית',
-    action: 'ניטור מתיחות אזורית',
-    details: 'מתיחות אזורית בגזרת מרכז הוגדרה כ"בינונית" על בסיס 8 אירועים פתוחים.',
-    level: 'warning',
-  },
-  {
-    id: 'log-5',
-    timestamp: '14:15:20',
-    operator: 'ד. כהן',
-    action: 'התחברות למערכת',
-    details: 'התחברות מאומתת לתפקיד קצין מבצעים - חמ״ל גזרת מרכז.',
-    level: 'info',
-  },
-];
+// reality_id per mode: 0 = real, non-zero for drill
+const REALITY_ID: Record<OperationalMode, number> = { real: 0, drill: 1 };
 
-export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose }) => {
+type LoadState = 'loading' | 'ready' | 'error';
+
+// Format to DD/MM • HH:mm
+const formatTime = (iso: string) => {
+  const date = new Date(iso);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month} • ${hours}:${minutes}`;
+};
+
+export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, sector, mode }) => {
+  const [entries, setEntries] = useState<AuditLogEntry[]>([]);
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+
+  // Reload whenever the modal opens or the sector / mode changes
+  useEffect(() => {
+    if (!isOpen) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ reality_id: String(REALITY_ID[mode]) });
+    if (sector) params.set('sector', sector);
+
+    setLoadState('loading');
+    fetch(`/api/audit-log?${params}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<AuditLogEntry[]>;
+      })
+      .then((rows) => {
+        setEntries(rows);
+        setLoadState('ready');
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error('Failed to load audit log:', error);
+        setLoadState('error');
+      });
+
+    return () => controller.abort();
+  }, [isOpen, sector, mode]);
+
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in select-none"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
       dir="rtl"
       onClick={onClose}
     >
       <div
-        className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden text-slate-800 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100"
+        className="w-full max-w-[1120px] max-h-[85vh] bg-white rounded-2xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden text-right dark:bg-slate-900 dark:border-slate-800"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center dark:bg-emerald-900/30 dark:text-emerald-400">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                יומן ביקורת מבצעי (Audit Log)
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                תיעוד פעולות מפעילים, שינויי סטטוס והחלטות בחמ״ל בזמן אמת
-              </p>
-            </div>
+        <div className="px-6 py-5 flex items-start justify-between border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">יומן ביקורת</h2>
+            <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
+              {mode === 'real' ? 'מצב אמת' : 'מצב תרגיל'} • גזרה: {sector ?? 'כל הגזרות'}
+            </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="w-10 h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:text-white"
+            title="סגור"
+            aria-label="סגור"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4.5 h-4.5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-5 max-h-[60vh] overflow-y-auto space-y-3">
-          {AUDIT_LOGS.map((entry) => (
-            <div
-              key={entry.id}
-              className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 hover:bg-slate-50 transition flex items-start gap-3 dark:bg-slate-800/40 dark:border-slate-800 dark:hover:bg-slate-800/70"
-            >
-              <div className="font-mono text-xs font-bold text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded-md shrink-0 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">
-                {entry.timestamp}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-slate-900 dark:text-white">
-                      {entry.action}
-                    </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      על ידי <strong className="text-slate-700 dark:text-slate-200">{entry.operator}</strong>
-                    </span>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      entry.level === 'action'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                        : entry.level === 'warning'
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                        : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    {entry.level === 'action' ? 'פעולה מבצעית' : entry.level === 'warning' ? 'התרעה' : 'מידע'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed dark:text-slate-300">
-                  {entry.details}
-                </p>
-              </div>
-            </div>
-          ))}
+        {/* Description Strip */}
+        <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 text-sm text-slate-600 dark:bg-slate-800/60 dark:border-slate-800 dark:text-slate-300">
+          כל פעולה בגזרה, כולל ניסיונות שנחסמו. הרשומות לקריאה בלבד
+          {loadState === 'ready' && ` • ${entries.length} רשומות.`}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between dark:bg-slate-800/60 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            מוצגות 5 פעולות אחרונות • תיעוד מאובטח
-          </span>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-lg transition cursor-pointer dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            סגור
-          </button>
+        {/* Log Entries Table */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-white dark:bg-slate-900">
+              <tr className="text-slate-500 dark:text-slate-400">
+                <th className="w-40 py-3.5 text-right font-medium border-b border-slate-200 dark:border-slate-800">זמן</th>
+                <th className="w-40 py-3.5 text-right font-medium border-b border-slate-200 dark:border-slate-800">משתמש</th>
+                <th className="w-40 py-3.5 text-right font-medium border-b border-slate-200 dark:border-slate-800">אירוע</th>
+                <th className="py-3.5 text-right font-medium border-b border-slate-200 dark:border-slate-800">פעולה</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+              {/* Loading / error / empty states */}
+              {(loadState !== 'ready' || entries.length === 0) && (
+                <tr>
+                  <td colSpan={4} className="py-10 text-center text-slate-500 dark:text-slate-400">
+                    {loadState === 'loading'
+                      ? 'טוען רשומות…'
+                      : loadState === 'error'
+                      ? 'לא ניתן לטעון את יומן הביקורת'
+                      : 'אין רשומות להצגה'}
+                  </td>
+                </tr>
+              )}
+              {loadState === 'ready' && entries.map((entry) => (
+                <tr key={entry.log_id}>
+                  <td className="py-3.5 whitespace-nowrap tabular-nums">
+                    <span dir="ltr">{formatTime(entry.occurred_at)}</span>
+                  </td>
+                  <td className="py-3.5 whitespace-nowrap">{entry.user_name}</td>
+                  <td className="py-3.5 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                    {entry.event_id ?? '—'}
+                  </td>
+                  <td className="py-3.5 select-text">{entry.action}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
