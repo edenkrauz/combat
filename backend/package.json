@@ -4,10 +4,10 @@
   "type": "module",
   "scripts": {
     "install:clean": "node -e \"fs.rmSync('node_modules', { recursive: true, force: true }); fs.rmSync('package-lock.json', { force: true })\" && npm i",
-    "dev": "node --env-file-if-exists=.env --watch src/main.ts",
+    "dev": "node --experimental-strip-types --env-file-if-exists=.env --watch src/main.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "start": "node --env-file-if-exists=.env src/main.ts",
+    "start": "node --experimental-strip-types --env-file-if-exists=.env src/main.ts",
     "test": "node --test --test-concurrency=1",
     "typecheck": "tsc -b --noEmit"
   },

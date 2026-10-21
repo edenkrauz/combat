@@ -17,22 +17,18 @@ import {
   getTaskCategory,
   moveCategoryTask,
 } from '../services/task-categories.service.ts';
-<<<<<<< HEAD
-import { EVENT_STATUSES, type EventStatus } from '../types/event.types.ts';
 import {
   AUDIT_ACTOR_TYPES,
   AUDIT_OUTCOMES,
   type AuditActorType,
   type AuditOutcome,
 } from '../types/audit-log.types.ts';
-=======
 import {
   EVENT_STATUSES,
   type EventRecord,
   type EventStatus,
 } from '../types/event.types.ts';
 import analysisRouter from './analysis.router.ts';
->>>>>>> cce8ad6fa4b37a61f26052e8e8390362f596fde1
 
 const apiRouter = Router();
 
@@ -648,7 +644,6 @@ apiRouter.patch(
   },
 );
 
-<<<<<<< HEAD
 /**
  * @openapi
  * /audit-log:
@@ -768,8 +763,7 @@ apiRouter.post('/audit-log', async (req: Request, res: Response) => {
     throw error;
   }
 });
-=======
+
 apiRouter.use(analysisRouter);
->>>>>>> cce8ad6fa4b37a61f26052e8e8390362f596fde1
 
 export default apiRouter;
