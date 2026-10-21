@@ -7,7 +7,7 @@ import { EventsPanel } from './components/EventsPanel';
 import { Map } from './components/Map';
 import { mockSectorsData } from './data/mockEvents';
 
-const STATISTICS_DASHBOARD_URL = 'https://www.google.com/webhp?igu=1';
+const STATISTICS_DASHBOARD_URL = 'http://localhost:3001/public/dashboard/a7f8ed94-7838-4b04-a4ce-a96d8539599e';
 
 export const App: React.FC = () => {
 
