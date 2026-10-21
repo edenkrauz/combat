@@ -70,6 +70,12 @@ export interface SectorGroup {
   events: EventItem[];
 }
 
+export function getEventKey(
+  event: Pick<DbEvent, 'event_id' | 'reality_id'>,
+): string {
+  return `${event.reality_id}:${event.event_id}`;
+}
+
 /**
  * Utility function to transform a raw DB event row into a UI-ready EventItem.
  */

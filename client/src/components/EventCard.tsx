@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin, Clock, Menu } from 'lucide-react';
 import type { EventItem } from '../types/event';
+import { getEventKey } from '../types/event';
 
 interface EventCardProps {
   event: EventItem;
@@ -71,7 +72,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
   return (
     <article
-      id={`event-card-${event.event_id}`}
+      id={`event-card-${getEventKey(event)}`}
       role="button"
       tabIndex={0}
       aria-pressed={isSelected}

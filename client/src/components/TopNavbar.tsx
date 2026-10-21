@@ -4,6 +4,9 @@ import {
   Clock,
   Menu,
   ChevronDown,
+  Moon,
+  Sun,
+  ChartColumn,
 } from 'lucide-react';
 import combatEmblem from '../assets/combat-emblem.png';
 import { DarkModeSwitch } from './DarkModeSwitch';
@@ -15,6 +18,7 @@ interface TopNavbarProps {
   onModeChange?: (mode: OperationalMode) => void;
   currentSector?: string;
   onOpenChecklists?: () => void;
+  onOpenStatistics?: () => void;
 }
 
 const HEBREW_DAYS = [
@@ -32,6 +36,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onModeChange,
   currentSector = 'מרכז',
   onOpenChecklists,
+  onOpenStatistics,
 }) => {
   // Live ticking clock and current date
   const [currentDateTime, setCurrentDateTime] = useState<Date>(new Date());
@@ -94,10 +99,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 dark:text-slate-400" />
             <span>{currentSector}</span>
           </button>
-        </div>
 
-        {/* Center Section: Live Date & Clock Container */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-auto">
+          {/* Live Date & Clock Container */}
           <div className="flex items-center gap-2 px-3 py-1 border border-slate-200/90 rounded-lg bg-white shadow-2xs text-xs text-slate-800 whitespace-nowrap dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
             {/* In RTL: Date on right, Clock on left */}
             <span className="font-bold text-slate-900 dark:text-white">
@@ -132,6 +135,17 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           >
             <Clock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
             <span>יומן ביקורת</span>
+          </button>
+
+          {/* Navigation Action 3: Statistics */}
+          <button
+            type="button"
+            onClick={onOpenStatistics}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-700 hover:text-slate-950 hover:bg-slate-100/80 rounded-lg transition cursor-pointer whitespace-nowrap dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-800"
+            title="סטטיסטיקה"
+          >
+            <ChartColumn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
+            <span>סטטיסטיקה</span>
           </button>
 
           {/* Mode Switcher: אמת / תרגיל */}
