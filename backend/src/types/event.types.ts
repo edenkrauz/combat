@@ -33,11 +33,3 @@ export interface UserPayload {
   timestamp: number;
 } 
 
-export interface RandomUserApiResponse {
-  status : number,
-  results: Array<{
-    name: { first: string; last: string };
-    email: string;
-    location: { country: string };
-  }>;
-}
