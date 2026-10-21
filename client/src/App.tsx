@@ -86,6 +86,7 @@ export const App: React.FC = () => {
           <Map
             events={allEvents}
             sector={activeSector}
+            selectedEventId={selectedEventId}
             onEventSelect={handleSelectEvent}
           />
         </div>
