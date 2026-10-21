@@ -7,8 +7,6 @@ server.listen(8000, (err) => {
         logger.err(err.message);
     } else {
         logger.info(`Express server started on port: 8000`);
-                logger.info(`Tamaaaaaaaaaaaaaaaaaaaaaar`);
-
 
         // Run the consumer in the background without awaiting it
         runConsumer().catch((error: unknown) => {
