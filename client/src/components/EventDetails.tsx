@@ -6,6 +6,10 @@ import {
   Clock,
   Check,
 } from 'lucide-react';
+import {
+  CHECKLIST_TASKS_UPDATED_EVENT,
+  getTasksForCategories,
+} from '../api/taskCategories';
 import type { EventItem, EventStatus } from '../types/event';
 
 interface EventDetailsProps {
@@ -55,13 +59,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   const [isStartFocused, setIsStartFocused] = useState<boolean>(event.status === 'open');
   const [isCloseFocused, setIsCloseFocused] = useState<boolean>(false);
 
-  // Tasks state (no numbers)
-  const [tasks, setTasks] = useState<OperationalTask[]>([
-    { id: 't1', text: 'העברת התרעה לחמ"ל הרלוונטי וסגירת גזרה', completed: false },
-    { id: 't2', text: 'הזנקת כוחות הביטחון, מחסומים וצוותי סריקה', completed: false },
-    { id: 't3', text: 'הזנקת מד"א וגורמי רפואה למתן טיפול מיידי', completed: false },
-    { id: 't4', text: 'תיאום מול משטרת מחוז ופיקוד העורף', completed: false },
-  ]);
+  const [tasks, setTasks] = useState<OperationalTask[]>([]);
+  const [isTasksLoading, setIsTasksLoading] = useState(true);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+  const eventCategoriesKey = JSON.stringify(event.categories ?? []);
 
   const TABS: TabKey[] = ['details', 'tasks', 'updates', 'history'];
   const activeTabRef = useRef(activeTab);
@@ -70,6 +71,11 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   focusedTaskIndexRef.current = focusedTaskIndex;
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
+  const allTasksComplete =
+    !isTasksLoading &&
+    !tasksError &&
+    tasks.length > 0 &&
+    tasks.every((task) => task.completed);
   const isStartFocusedRef = useRef(isStartFocused);
   isStartFocusedRef.current = isStartFocused;
   const isCloseFocusedRef = useRef(isCloseFocused);
@@ -98,6 +104,62 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+    let latestRequest = 0;
+    const categories: string[] = JSON.parse(eventCategoriesKey);
+    const loadTasks = (showLoading: boolean) => {
+      const requestId = ++latestRequest;
+      if (showLoading) setIsTasksLoading(true);
+      setTasksError(null);
+
+      getTasksForCategories(categories)
+        .then((taskTexts) => {
+          if (!isCurrentRequest || requestId !== latestRequest) return;
+          const completedByTask = new Map(
+            tasksRef.current.map((task) => [
+              task.text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he'),
+              task.completed,
+            ]),
+          );
+          setTasks(
+            taskTexts.map((text, index) => ({
+              id: `event-task-${event.reality_id}-${event.event_id}-${index}`,
+              text,
+              completed:
+                completedByTask.get(
+                  text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he'),
+                ) ?? false,
+            })),
+          );
+        })
+        .catch((error: unknown) => {
+          if (isCurrentRequest && requestId === latestRequest) {
+            setTasksError(
+              error instanceof Error ? error.message : 'טעינת משימות האירוע נכשלה',
+            );
+          }
+        })
+        .finally(() => {
+          if (isCurrentRequest && requestId === latestRequest) {
+            setIsTasksLoading(false);
+          }
+        });
+    };
+
+    const handleChecklistTasksUpdated = () => loadTasks(false);
+    window.addEventListener(CHECKLIST_TASKS_UPDATED_EVENT, handleChecklistTasksUpdated);
+    loadTasks(true);
+
+    return () => {
+      isCurrentRequest = false;
+      window.removeEventListener(
+        CHECKLIST_TASKS_UPDATED_EVENT,
+        handleChecklistTasksUpdated,
+      );
+    };
+  }, [event.event_id, event.reality_id, eventCategoriesKey]);
 
   // Reset & focus appropriately when event_id changes
   useEffect(() => {
@@ -167,7 +229,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       const startFocused = isStartFocusedRef.current;
       const closeFocused = isCloseFocusedRef.current;
       const curEvent = currentEventRef.current;
-      const canClose = curEvent.status === 'in_progress' && curTasks.every((t) => t.completed);
+      const canClose =
+        curEvent.status === 'in_progress' &&
+        curTasks.length > 0 &&
+        curTasks.every((t) => t.completed);
 
       // If user is typing in text inputs or textarea, let Escape return focus to subtitles
       if (isInput) {
@@ -691,8 +756,9 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               ref={closeButtonRef}
               type="button"
               onClick={() => handleStatusChange('closed')}
+              disabled={!allTasksComplete || isStatusSaving}
               onFocus={() => {
-                if (currentEvent.status === 'in_progress' && tasks.every((t) => t.completed)) {
+                if (currentEvent.status === 'in_progress' && allTasksComplete) {
                   setIsCloseFocused(true);
                   isCloseFocusedRef.current = true;
                 }
@@ -708,7 +774,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               }`}
             >
               <span>סגירת אירוע</span>
-              {tasks.every((t) => t.completed) && (
+              {allTasksComplete && (
                 <kbd
                   className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
                     isCloseFocused
@@ -764,7 +830,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         >
           <span>משימות</span>
           <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700 font-mono font-medium">
-            {completedTasksCount}/4
+            {completedTasksCount}/{tasks.length}
           </span>
         </button>
 
@@ -809,7 +875,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <span className="text-slate-300 mx-0.5">•</span>
             </>
           )}
-          {currentEvent.status === 'in_progress' && tasks.every((t) => t.completed) && (
+          {currentEvent.status === 'in_progress' && allTasksComplete && (
             <>
               <span className="text-emerald-700 font-bold">סגירת אירוע:</span>
               <kbd className="px-1 py-0.2 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-mono text-[10px]">↑</kbd>
@@ -1038,6 +1104,25 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               {completedTasksCount} מתוך {tasks.length} הושלמו
             </span>
           </div>
+
+          {isTasksLoading && (
+            <p className="py-6 text-center text-sm text-slate-500" role="status">
+              טוען משימות לפי קטגוריות האירוע...
+            </p>
+          )}
+          {tasksError && (
+            <p
+              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              role="alert"
+            >
+              טעינת משימות האירוע נכשלה: {tasksError}
+            </p>
+          )}
+          {!isTasksLoading && !tasksError && tasks.length === 0 && (
+            <p className="py-6 text-center text-sm text-slate-500">
+              לא נמצאו משימות לקטגוריות האירוע.
+            </p>
+          )}
 
           <div className="space-y-2">
             {tasks.map((task, index) => {
