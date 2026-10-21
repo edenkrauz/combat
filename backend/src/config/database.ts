@@ -1,6 +1,6 @@
-import { env } from 'node:process';
 import { Pool } from 'pg';
 
+const env = process.env;
 const connectionString = env.DATABASE_URL;
 
 if (!connectionString) {
