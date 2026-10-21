@@ -47,6 +47,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   const [currentEvent, setCurrentEvent] = useState<EventItem>(event);
   const [isStatusSaving, setIsStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false);
 
   // If event is already in_progress, open on 'tasks'; if open, open ready for treatment
   const [activeTab, setActiveTab] = useState<TabKey>(
@@ -229,10 +230,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       const startFocused = isStartFocusedRef.current;
       const closeFocused = isCloseFocusedRef.current;
       const curEvent = currentEventRef.current;
-      const canClose =
-        curEvent.status === 'in_progress' &&
-        curTasks.length > 0 &&
-        curTasks.every((t) => t.completed);
+      const canClose = curEvent.status === 'in_progress';
 
       // If user is typing in text inputs or textarea, let Escape return focus to subtitles
       if (isInput) {
@@ -289,7 +287,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           if (canClose) {
-            handleStatusChange('closed');
+            closeButtonRef.current?.click();
           }
           setIsCloseFocused(false);
           isCloseFocusedRef.current = false;
@@ -351,7 +349,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       // 4. ArrowUp:
       // If we are on subtitles level (curTaskIdx === -1):
       // - If status === 'open': go UP to "התחלת טיפול"!
-      // - If status === 'in_progress' and canClose: go UP to "סגירת אירוע"!
+      // - If status === 'in_progress': go UP to "סגירת אירוע"!
       if (e.key === 'ArrowUp') {
         if (curTaskIdx === -1) {
           if (curEvent.status === 'open') {
@@ -361,7 +359,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             startButtonRef.current?.focus({ preventScroll: true });
             return;
           }
-          if (canClose) {
+          if (curEvent.status === 'in_progress') {
             e.preventDefault();
             setIsCloseFocused(true);
             isCloseFocusedRef.current = true;
@@ -489,6 +487,23 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     } finally {
       setIsStatusSaving(false);
     }
+  };
+
+  const requestCloseEvent = () => {
+    if (currentEvent.status !== 'in_progress') {
+      void handleStatusChange('closed');
+      return;
+    }
+    if (!allTasksComplete) {
+      setIsCloseConfirmationOpen(true);
+      return;
+    }
+    void handleStatusChange('closed');
+  };
+
+  const confirmCloseEvent = async () => {
+    setIsCloseConfirmationOpen(false);
+    await handleStatusChange('closed');
   };
 
   const handleStartHandling = async () => {
@@ -669,7 +684,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => handleStatusChange('closed')}
+            onClick={requestCloseEvent}
             className={`font-semibold cursor-pointer transition ${
               currentEvent.status === 'closed'
                 ? 'text-black font-bold'
@@ -755,10 +770,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             <button
               ref={closeButtonRef}
               type="button"
-              onClick={() => handleStatusChange('closed')}
-              disabled={!allTasksComplete || isStatusSaving}
+              onClick={requestCloseEvent}
+              disabled={isStatusSaving}
               onFocus={() => {
-                if (currentEvent.status === 'in_progress' && allTasksComplete) {
+                if (currentEvent.status === 'in_progress') {
                   setIsCloseFocused(true);
                   isCloseFocusedRef.current = true;
                 }
@@ -774,17 +789,15 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               }`}
             >
               <span>סגירת אירוע</span>
-              {allTasksComplete && (
-                <kbd
-                  className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
-                    isCloseFocused
-                      ? 'bg-white text-emerald-900 border border-emerald-300'
-                      : 'bg-emerald-700 text-emerald-100'
-                  }`}
-                >
-                  Enter ↵
-                </kbd>
-              )}
+              <kbd
+                className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
+                  isCloseFocused
+                    ? 'bg-white text-emerald-900 border border-emerald-300'
+                    : 'bg-emerald-700 text-emerald-100'
+                }`}
+              >
+                Enter ↵
+              </kbd>
             </button>
             {isCloseFocused && (
               <span className="text-xs font-bold text-emerald-700 animate-pulse select-none">
@@ -1402,6 +1415,46 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
                 className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
               >
                 שמירת שינויים
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isCloseConfirmationOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4"
+          dir="rtl"
+          onClick={() => setIsCloseConfirmationOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="close-event-confirmation-title"
+            className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 text-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="close-event-confirmation-title"
+              className="font-bold text-base text-black mb-5"
+            >
+              לא כל המשימות הושלמו, האם תרצה לסגור את האירוע בכל מקרה?
+            </h3>
+            <div className="flex justify-start gap-2">
+              <button
+                type="button"
+                onClick={() => void confirmCloseEvent()}
+                disabled={isStatusSaving}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+              >
+                כן, תסגור
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCloseConfirmationOpen(false)}
+                disabled={isStatusSaving}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-black hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
+              >
+                ביטול
               </button>
             </div>
           </div>
