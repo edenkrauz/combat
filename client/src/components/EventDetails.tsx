@@ -8,6 +8,10 @@ import {
   Calendar,
   ChevronDown,
 } from 'lucide-react';
+import {
+  CHECKLIST_TASKS_UPDATED_EVENT,
+  getTasksForCategories,
+} from '../api/taskCategories';
 import type { EventItem, EventStatus } from '../types/event';
 import { EventSummaryModal } from './EventSummaryModal';
 
@@ -15,8 +19,10 @@ interface EventDetailsProps {
   event: EventItem;
   onClose: () => void;
   onUpdateEvent?: (updatedEvent: EventItem) => void;
-  completedTaskIds?: string[];
-  onCompletedTasksChange?: (eventId: string, completedTaskIds: string[]) => void;
+  onUpdateStatus?: (
+    event: EventItem,
+    status: EventStatus,
+  ) => Promise<EventItem>;
 }
 
 type TabKey = 'details' | 'tasks' | 'updates' | 'history';
@@ -26,13 +32,6 @@ interface OperationalTask {
   text: string;
   completed: boolean;
 }
-
-const DEFAULT_TASKS: Omit<OperationalTask, 'completed'>[] = [
-  { id: 't1', text: 'העברת התרעה לחמ"ל הרלוונטי וסגירת גזרה' },
-  { id: 't2', text: 'הזנקת כוחות הביטחון, מחסומים וצוותי סריקה' },
-  { id: 't3', text: 'הזנקת מד"א וגורמי רפואה למתן טיפול מיידי' },
-  { id: 't4', text: 'תיאום מול משטרת מחוז ופיקוד העורף' },
-];
 
 interface UpdateEntry {
   id: string;
@@ -132,11 +131,14 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   event,
   onClose,
   onUpdateEvent,
-  completedTaskIds,
-  onCompletedTasksChange,
+  onUpdateStatus,
 }) => {
   // Editable event state
   const [currentEvent, setCurrentEvent] = useState<EventItem>(event);
+  const [isStatusSaving, setIsStatusSaving] = useState(false);
+  const [isClosingEvent, setIsClosingEvent] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [isCloseConfirmationOpen, setIsCloseConfirmationOpen] = useState(false);
 
   // If event is already in_progress, open on 'tasks'; if open, open ready for treatment
   const [activeTab, setActiveTab] = useState<TabKey>(
@@ -210,17 +212,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     setIsEditing(true);
   };
 
-  // Tasks state (no numbers)
-  const [tasks, setTasks] = useState<OperationalTask[]>(() =>
-    DEFAULT_TASKS.map((t) => ({ ...t, completed: completedTaskIds?.includes(t.id) ?? false }))
-  );
-
-  useEffect(() => {
-    onCompletedTasksChange?.(
-      event.event_id,
-      tasks.filter((t) => t.completed).map((t) => t.id)
-    );
-  }, [tasks]);
+  const [tasks, setTasks] = useState<OperationalTask[]>([]);
+  const [isTasksLoading, setIsTasksLoading] = useState(true);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+  const eventCategoriesKey = JSON.stringify(event.categories ?? []);
 
   const TABS: TabKey[] = ['details', 'tasks', 'updates', 'history'];
   const activeTabRef = useRef(activeTab);
@@ -229,6 +224,11 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   focusedTaskIndexRef.current = focusedTaskIndex;
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
+  const allTasksComplete =
+    !isTasksLoading &&
+    !tasksError &&
+    tasks.length > 0 &&
+    tasks.every((task) => task.completed);
   const isStartFocusedRef = useRef(isStartFocused);
   isStartFocusedRef.current = isStartFocused;
   const isCloseFocusedRef = useRef(isCloseFocused);
@@ -264,11 +264,69 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   });
 
   useEffect(() => {
+    if (currentEvent.status === 'closed') return;
+
     const timer = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [currentEvent.status]);
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+    let latestRequest = 0;
+    const categories: string[] = JSON.parse(eventCategoriesKey);
+    const loadTasks = (showLoading: boolean) => {
+      const requestId = ++latestRequest;
+      if (showLoading) setIsTasksLoading(true);
+      setTasksError(null);
+
+      getTasksForCategories(categories)
+        .then((taskTexts) => {
+          if (!isCurrentRequest || requestId !== latestRequest) return;
+          const completedByTask = new Map(
+            tasksRef.current.map((task) => [
+              task.text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he'),
+              task.completed,
+            ]),
+          );
+          setTasks(
+            taskTexts.map((text, index) => ({
+              id: `event-task-${event.reality_id}-${event.event_id}-${index}`,
+              text,
+              completed:
+                completedByTask.get(
+                  text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he'),
+                ) ?? false,
+            })),
+          );
+        })
+        .catch((error: unknown) => {
+          if (isCurrentRequest && requestId === latestRequest) {
+            setTasksError(
+              error instanceof Error ? error.message : 'טעינת משימות האירוע נכשלה',
+            );
+          }
+        })
+        .finally(() => {
+          if (isCurrentRequest && requestId === latestRequest) {
+            setIsTasksLoading(false);
+          }
+        });
+    };
+
+    const handleChecklistTasksUpdated = () => loadTasks(false);
+    window.addEventListener(CHECKLIST_TASKS_UPDATED_EVENT, handleChecklistTasksUpdated);
+    loadTasks(true);
+
+    return () => {
+      isCurrentRequest = false;
+      window.removeEventListener(
+        CHECKLIST_TASKS_UPDATED_EVENT,
+        handleChecklistTasksUpdated,
+      );
+    };
+  }, [event.event_id, event.reality_id, eventCategoriesKey]);
 
   // Reset & focus appropriately when event_id changes
   useEffect(() => {
@@ -352,7 +410,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       const startFocused = isStartFocusedRef.current;
       const closeFocused = isCloseFocusedRef.current;
       const curEvent = currentEventRef.current;
-      const canClose = curEvent.status === 'in_progress' && curTasks.every((t) => t.completed);
+      const canClose = curEvent.status === 'in_progress';
 
       // If user is typing in text inputs or textarea, let Escape return focus to subtitles
       if (isInput) {
@@ -409,7 +467,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           if (canClose) {
-            handleStatusChange('closed');
+            closeButtonRef.current?.click();
           }
           setIsCloseFocused(false);
           isCloseFocusedRef.current = false;
@@ -471,7 +529,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       // 4. ArrowUp:
       // If we are on subtitles level (curTaskIdx === -1):
       // - If status === 'open': go UP to "התחלת טיפול"!
-      // - If status === 'in_progress' and canClose: go UP to "סגירת אירוע"!
+      // - If status === 'in_progress': go UP to "סגירת אירוע"!
       if (e.key === 'ArrowUp') {
         if (curTaskIdx === -1) {
           if (curEvent.status === 'open') {
@@ -481,7 +539,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             startButtonRef.current?.focus({ preventScroll: true });
             return;
           }
-          if (canClose) {
+          if (curEvent.status === 'in_progress') {
             e.preventDefault();
             setIsCloseFocused(true);
             isCloseFocusedRef.current = true;
@@ -587,20 +645,53 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   };
 
   // Status transitions
-  const handleStatusChange = (newStatus: EventStatus) => {
-    // status changed
-    if (newStatus === 'closed') {
-      setIsClosedModalOpen(true);
-    }
-    const updated = { ...currentEvent, status: newStatus };
-    currentEventRef.current = updated;
-    setCurrentEvent(updated);
-    onUpdateEvent?.(updated);
+  const handleStatusChange = async (newStatus: EventStatus): Promise<boolean> => {
+    if (isStatusSaving) return false;
+    if (newStatus === currentEvent.status) return true;
 
+    setIsStatusSaving(true);
+    setIsClosingEvent(newStatus === 'closed');
+    setStatusError(null);
+    try {
+      const updated = onUpdateStatus
+        ? await onUpdateStatus(currentEvent, newStatus)
+        : { ...currentEvent, status: newStatus };
+      currentEventRef.current = updated;
+      setCurrentEvent(updated);
+      onUpdateEvent?.(updated);
+      if (newStatus === 'closed') {
+        setIsClosedModalOpen(true);
+      }
+      return true;
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : 'עדכון סטטוס האירוע נכשל',
+      );
+      return false;
+    } finally {
+      setIsStatusSaving(false);
+      setIsClosingEvent(false);
+    }
   };
 
-  const handleStartHandling = () => {
-    handleStatusChange('in_progress');
+  const requestCloseEvent = () => {
+    if (currentEvent.status === 'closed') return;
+    if (!allTasksComplete) {
+      setIsCloseConfirmationOpen(true);
+      return;
+    }
+    void handleStatusChange('closed');
+  };
+
+  const confirmCloseEvent = async () => {
+    if (await handleStatusChange('closed')) {
+      setIsCloseConfirmationOpen(false);
+    }
+  };
+
+  const handleStartHandling = async () => {
+    const updated = await handleStatusChange('in_progress');
+    if (!updated) return;
     setIsStartFocused(false);
     isStartFocusedRef.current = false;
     setActiveTab('tasks');
@@ -653,6 +744,11 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-y-auto text-right select-none animate-in fade-in duration-200 focus:outline-none dark:bg-slate-900/95 dark:border-slate-800"
       dir="rtl"
     >
+      {statusError && (
+        <p className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
+          עדכון האירוע נכשל: {statusError}
+        </p>
+      )}
       {/* 1. TOP HEADER: Navigation & Code */}
       <div className="flex items-start justify-between gap-2 pb-2">
         {/* Right side: Code pill and breadcrumb hierarchy */}
@@ -767,6 +863,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           <button
             type="button"
             onClick={() => handleStatusChange('open')}
+            disabled={isStatusSaving}
             className={`font-semibold cursor-pointer transition ${
               currentEvent.status === 'open'
                 ? 'text-black font-bold dark:text-white'
@@ -778,6 +875,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           <button
             type="button"
             onClick={() => handleStatusChange('in_progress')}
+            disabled={isStatusSaving}
             className={`font-semibold cursor-pointer transition ${
               currentEvent.status === 'in_progress'
                 ? 'text-black font-bold dark:text-white'
@@ -788,7 +886,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => handleStatusChange('closed')}
+            onClick={requestCloseEvent}
+            disabled={isStatusSaving}
             className={`font-semibold cursor-pointer transition ${
               currentEvent.status === 'closed'
                 ? 'text-black font-bold dark:text-white'
@@ -838,6 +937,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               ref={startButtonRef}
               type="button"
               onClick={handleStartHandling}
+              disabled={isStatusSaving}
               onFocus={() => {
                 setIsStartFocused(true);
                 isStartFocusedRef.current = true;
@@ -869,9 +969,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             <button
               ref={closeButtonRef}
               type="button"
-              onClick={() => handleStatusChange('closed')}
+              onClick={requestCloseEvent}
+              disabled={isStatusSaving}
               onFocus={() => {
-                if (currentEvent.status === 'in_progress' && tasks.every((t) => t.completed)) {
+                if (currentEvent.status === 'in_progress') {
                   setIsCloseFocused(true);
                   isCloseFocusedRef.current = true;
                 }
@@ -887,23 +988,22 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               }`}
             >
               <span>סגירת אירוע</span>
-              {tasks.every((t) => t.completed) && (
-                <kbd
-                  className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
-                    isCloseFocused
-                      ? 'bg-white text-emerald-900 border border-emerald-300'
-                      : 'bg-emerald-700 text-emerald-100 dark:bg-emerald-800'
-                  }`}
-                >
-                  Enter ↵
-                </kbd>
-              )}
+              <kbd
+                className={`ms-2 inline-flex items-center rounded px-2 py-0.5 text-xs font-mono font-bold transition shadow-xs ${
+                  isCloseFocused
+                    ? 'bg-white text-emerald-900 border border-emerald-300'
+                    : 'bg-emerald-700 text-emerald-100 dark:bg-emerald-800'
+                }`}
+              >
+                Enter ↵
+              </kbd>
             </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={() => handleStatusChange('in_progress')}
+            disabled={isStatusSaving}
             className="bg-slate-200 hover:bg-slate-300 text-black font-medium text-[13px] px-4 py-2 rounded-lg transition cursor-pointer shrink-0 whitespace-nowrap dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white"
           >
             פתיחה מחדש
@@ -983,7 +1083,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               <span className="text-slate-300 mx-0.5 dark:text-slate-600">•</span>
             </>
           )}
-          {currentEvent.status === 'in_progress' && tasks.every((t) => t.completed) && (
+          {currentEvent.status === 'in_progress' && allTasksComplete && (
             <>
               <span className="text-emerald-700 font-bold dark:text-emerald-400">סגירת אירוע:</span>
               <kbd className="px-1 py-0.2 bg-emerald-50 text-emerald-800 rounded border border-emerald-300 font-mono text-[10px] dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">↑</kbd>
@@ -1218,6 +1318,25 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
               {completedTasksCount} מתוך {tasks.length} הושלמו
             </span>
           </div>
+
+          {isTasksLoading && (
+            <p className="py-6 text-center text-sm text-slate-500" role="status">
+              טוען משימות לפי קטגוריות האירוע...
+            </p>
+          )}
+          {tasksError && (
+            <p
+              className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+              role="alert"
+            >
+              טעינת משימות האירוע נכשלה: {tasksError}
+            </p>
+          )}
+          {!isTasksLoading && !tasksError && tasks.length === 0 && (
+            <p className="py-6 text-center text-sm text-slate-500">
+              לא נמצאו משימות לקטגוריות האירוע.
+            </p>
+          )}
 
           <div className="space-y-2">
             {tasks.map((task, index) => {
@@ -1761,6 +1880,48 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </div>
         </div>
       )}
+      {isCloseConfirmationOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/10 p-4 dark:bg-black/30"
+          dir="rtl"
+          onClick={() => {
+            if (!isStatusSaving) setIsCloseConfirmationOpen(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="close-event-confirmation-title"
+            className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 text-right dark:bg-slate-900 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="close-event-confirmation-title"
+              className="font-bold text-base text-black mb-5 dark:text-white"
+            >
+              לא כל המשימות הושלמו, האם תרצה לסגור את האירוע בכל מקרה?
+            </h3>
+            <div className="flex justify-start gap-2">
+              <button
+                type="button"
+                onClick={() => void confirmCloseEvent()}
+                disabled={isStatusSaving}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+              >
+                כן, תסגור
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCloseConfirmationOpen(false)}
+                disabled={isStatusSaving}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-black hover:bg-slate-50 disabled:opacity-50 cursor-pointer dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 10. EVENT SUMMARY MODAL */}
       <EventSummaryModal
         isOpen={isClosedModalOpen}
@@ -1770,6 +1931,22 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         checklistTasks={tasks}
         onClose={() => setIsClosedModalOpen(false)}
       />
+      {isClosingEvent && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/15 p-4 dark:bg-black/40"
+          dir="rtl"
+          role="dialog"
+          aria-modal="true"
+          aria-label="סגירת האירוע מתבצעת"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-5 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent dark:border-emerald-400 dark:border-t-transparent" />
+            <span className="text-sm font-semibold" role="status" aria-live="polite">
+              סוגר את האירוע...
+            </span>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
