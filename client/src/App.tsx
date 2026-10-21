@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { TopNavbar, type OperationalMode } from './components/TopNavbar';
 import { OperationalBanner } from './components/OperationalBanner';
 import { ChecklistTemplatesModal } from './components/ChecklistTemplatesModal';
@@ -23,6 +24,8 @@ export const App: React.FC = () => {
   const [operationalMode, setOperationalMode] = useState<OperationalMode>('real');
   const [isChecklistsOpen, setIsChecklistsOpen] = useState(false);
   const [isAuditLogOpen, setIsAuditLogOpen] = useState(false);
+  const [isEventsListOpen, setIsEventsListOpen] = useState(true);
+
   useEffect(() => {
     let isCurrentRequest = true;
 
@@ -95,6 +98,11 @@ export const App: React.FC = () => {
     setSelectedEventId((prev) => (prev === eventKey ? null : eventKey));
   };
 
+  const handleCloseDetails = () => {
+    setSelectedEventId(null);
+    setIsEventsListOpen(true);
+  };
+
   const handleUpdateEvent = (updated: EventItem) => {
     setEvents((previous) =>
       previous.map((event) =>
@@ -116,6 +124,7 @@ export const App: React.FC = () => {
   const handleModeChange = (mode: OperationalMode) => {
     setOperationalMode(mode);
     setSelectedEventId(null);
+    setIsEventsListOpen(true);
   };
 
   return (
@@ -167,27 +176,83 @@ export const App: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="w-[380px] shrink-0 h-[calc(100vh-8.5rem)] flex flex-col">
-              <EventsPanel
-                sectors={sectorsState}
-                selectedEventId={selectedEventId}
-                onSelectEvent={handleSelectEvent}
-              />
+            {/* Events List Panel with Collapsible Tab / Tongue Toggle */}
+            <div className="relative flex shrink-0">
+              {/* Flared tab button - only rendered when an event is selected and details panel is open */}
+              {selectedEvent && (
+                <button
+                  type="button"
+                  onClick={() => setIsEventsListOpen(!isEventsListOpen)}
+                  className="absolute -left-[24px] top-1/2 -translate-y-1/2 z-30 w-[24px] h-24 cursor-pointer border-0 p-0 bg-transparent outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 select-none"
+                  style={{
+                    outline: 'none',
+                    boxShadow: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  title={isEventsListOpen ? "סגור רשימת אירועים" : "פתח רשימת אירועים"}
+                  aria-label={isEventsListOpen ? "סגור רשימת אירועים" : "פתח רשימת אירועים"}
+                >
+                  {/* SVG background creating top & bottom concave flared corners blending into the panel border */}
+                  <svg
+                    viewBox="0 0 24 96"
+                    className="absolute inset-0 w-full h-full pointer-events-none fill-white dark:fill-slate-900 stroke-slate-200/90 dark:stroke-slate-800"
+                    style={{ strokeWidth: 1 }}
+                  >
+                    <path
+                      d="M 24,0 C 24,14 14,19 8,25 C 2,31 1,37 1,48 C 1,59 2,65 8,71 C 14,77 24,82 24,96 Z"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {/* Line on right side to blend seamlessly into the panel background */}
+                    <line
+                      x1="24"
+                      y1="0"
+                      x2="24"
+                      y2="96"
+                      className="stroke-white dark:stroke-slate-900"
+                      strokeWidth="2"
+                    />
+                  </svg>
+
+                  {/* Chevron Icon centered inside the tab - constant color across hover/focus/active */}
+                  <span className="relative z-10 flex items-center justify-center w-full h-full pr-1">
+                    {isEventsListOpen ? (
+                      <ChevronRight className="w-4 h-4 text-slate-400 dark:text-slate-400 pointer-events-none" />
+                    ) : (
+                      <ChevronLeft className="w-4 h-4 text-slate-400 dark:text-slate-400 pointer-events-none" />
+                    )}
+                  </span>
+                </button>
+              )}
+
+              {/* Wrapped EventsPanel with smooth width & opacity transition */}
+              <div
+                className={`transition-all duration-300 ease-in-out overflow-hidden flex flex-col h-[calc(100vh-8.5rem)] ${
+                  isEventsListOpen ? 'w-[380px] opacity-100' : 'w-0 opacity-0'
+                }`}
+              >
+                <div className="w-[380px] h-full flex flex-col">
+                  <EventsPanel
+                    sectors={sectorsState}
+                    selectedEventId={selectedEventId}
+                    onSelectEvent={handleSelectEvent}
+                  />
+                </div>
+              </div>
             </div>
 
             {selectedEvent && (
-              <div className="w-[500px] shrink-0 h-[calc(100vh-8.5rem)] flex flex-col">
+              <div className="w-[500px] shrink-0 h-[calc(100vh-8.5rem)] flex flex-col ms-3">
                 <EventDetails
                   key={getEventKey(selectedEvent)}
                   event={selectedEvent}
-                  onClose={() => setSelectedEventId(null)}
+                  onClose={handleCloseDetails}
                   onUpdateEvent={handleUpdateEvent}
                   onUpdateStatus={handleStatusChange}
                 />
               </div>
             )}
 
-            <div className="flex-1 h-[calc(100vh-8.5rem)] min-w-[300px] flex flex-col">
+            <div className={`flex-1 h-[calc(100vh-8.5rem)] min-w-[300px] flex flex-col ${selectedEvent ? 'ms-3' : ''}`}>
               <Map
                 events={allEvents}
                 sector={activeSector}

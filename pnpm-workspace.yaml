@@ -1,8 +1,9 @@
 packages:
   - 'client'
-  - 'server'
+  - 'backend'
 
 allowBuilds:
-  core-js: set this to true or false
+  '@scarf/scarf': false
+  core-js: false
   esbuild: true
-  pnpm: true
+  pnpm: false
