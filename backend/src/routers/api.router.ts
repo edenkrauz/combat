@@ -13,6 +13,7 @@ import {
   moveCategoryTask,
 } from '../services/task-categories.service.ts';
 import { EVENT_STATUSES, type EventStatus } from '../types/event.types.ts';
+import analysisRouter from './analysis.router.ts';
 
 const apiRouter = Router();
 
@@ -511,5 +512,7 @@ apiRouter.patch(
     return res.json(event);
   },
 );
+
+apiRouter.use(analysisRouter);
 
 export default apiRouter;
