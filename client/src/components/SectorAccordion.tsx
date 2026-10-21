@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronLeft } from 'lucide-react';
 import type { EventItem, SectorGroup } from '../types/event';
+import { getEventKey } from '../types/event';
 import { EventCard } from './EventCard';
 
 interface SectorAccordionProps {
@@ -78,10 +79,10 @@ export const SectorAccordion: React.FC<SectorAccordionProps> = ({
         <div className="mt-2 space-y-2.5">
           {sector.events.map((event) => (
             <EventCard
-              key={event.event_id}
+              key={getEventKey(event)}
               event={event}
-              isSelected={selectedEventId === event.event_id}
-              isFocused={focusedEventId === event.event_id}
+              isSelected={selectedEventId === getEventKey(event)}
+              isFocused={focusedEventId === getEventKey(event)}
               onFocus={() => onFocusEvent?.(event)}
               onClick={() => onSelectEvent?.(event)}
             />

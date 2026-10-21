@@ -12,6 +12,10 @@ interface EventDetailsProps {
   event: EventItem;
   onClose: () => void;
   onUpdateEvent?: (updatedEvent: EventItem) => void;
+  onUpdateStatus?: (
+    event: EventItem,
+    status: EventStatus,
+  ) => Promise<EventItem>;
 }
 
 type TabKey = 'details' | 'tasks' | 'updates' | 'history';
@@ -33,9 +37,12 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   event,
   onClose,
   onUpdateEvent,
+  onUpdateStatus,
 }) => {
   // Editable event state
   const [currentEvent, setCurrentEvent] = useState<EventItem>(event);
+  const [isStatusSaving, setIsStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   // If event is already in_progress, open on 'tasks'; if open, open ready for treatment
   const [activeTab, setActiveTab] = useState<TabKey>(
@@ -395,15 +402,33 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   };
 
   // Status transitions
-  const handleStatusChange = (newStatus: EventStatus) => {
-    const updated = { ...currentEvent, status: newStatus };
-    currentEventRef.current = updated;
-    setCurrentEvent(updated);
-    onUpdateEvent?.(updated);
+  const handleStatusChange = async (newStatus: EventStatus): Promise<boolean> => {
+    if (isStatusSaving) return false;
+    if (newStatus === currentEvent.status) return true;
+
+    setIsStatusSaving(true);
+    setStatusError(null);
+    try {
+      const updated = onUpdateStatus
+        ? await onUpdateStatus(currentEvent, newStatus)
+        : { ...currentEvent, status: newStatus };
+      currentEventRef.current = updated;
+      setCurrentEvent(updated);
+      onUpdateEvent?.(updated);
+      return true;
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : 'עדכון סטטוס האירוע נכשל',
+      );
+      return false;
+    } finally {
+      setIsStatusSaving(false);
+    }
   };
 
-  const handleStartHandling = () => {
-    handleStatusChange('in_progress');
+  const handleStartHandling = async () => {
+    const updated = await handleStatusChange('in_progress');
+    if (!updated) return;
     setIsStartFocused(false);
     isStartFocusedRef.current = false;
     setActiveTab('tasks');
@@ -446,6 +471,11 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-y-auto text-right select-none animate-in fade-in duration-200"
       dir="rtl"
     >
+      {statusError && (
+        <p className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
+          עדכון האירוע נכשל: {statusError}
+        </p>
+      )}
       {/* 1. TOP HEADER: Navigation & Code */}
       <div className="flex items-start justify-between gap-2 pb-2">
         {/* Right side: Code pill and breadcrumb hierarchy */}

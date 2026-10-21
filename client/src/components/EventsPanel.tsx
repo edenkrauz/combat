@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { SectorGroup, EventItem } from '../types/event';
+import { getEventKey } from '../types/event';
 import { SectorAccordion } from './SectorAccordion';
 
 interface EventsPanelProps {
@@ -15,7 +16,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
 }) => {
   const allVisibleEvents = sectors.flatMap((sector) => sector.events);
   const [focusedEventId, setFocusedEventId] = useState<string | null>(
-    selectedEventId ?? (allVisibleEvents[0]?.event_id ?? null)
+    selectedEventId ?? (allVisibleEvents[0] ? getEventKey(allVisibleEvents[0]) : null)
   );
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -89,7 +90,9 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
       if (e.key === 'Escape') {
         if (selectedEventId) {
           e.preventDefault();
-          const current = allVisibleEvents.find((item) => item.event_id === selectedEventId);
+          const current = allVisibleEvents.find(
+            (item) => getEventKey(item) === selectedEventId,
+          );
           if (current) {
             onSelectEvent?.(current);
           }
@@ -109,7 +112,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
 
         const currentActiveId = focusedEventId;
         const currentIndex = allVisibleEvents.findIndex(
-          (item) => item.event_id === currentActiveId
+          (item) => getEventKey(item) === currentActiveId,
         );
 
         let nextIndex = 0;
@@ -125,7 +128,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
 
         const nextEvent = allVisibleEvents[nextIndex];
         if (nextEvent) {
-          setFocusedEventId(nextEvent.event_id);
+          setFocusedEventId(getEventKey(nextEvent));
         }
         return;
       }
@@ -133,7 +136,9 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
       // 5. Enter: Open / Select the focused event
       if (e.key === 'Enter') {
         const currentActiveId = focusedEventId;
-        const currentEvent = allVisibleEvents.find((item) => item.event_id === currentActiveId);
+        const currentEvent = allVisibleEvents.find(
+          (item) => getEventKey(item) === currentActiveId,
+        );
         if (currentEvent) {
           e.preventDefault();
           onSelectEvent?.(currentEvent);
@@ -147,7 +152,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
         e.preventDefault();
         const first = allVisibleEvents[0];
         if (first) {
-          setFocusedEventId(first.event_id);
+          setFocusedEventId(getEventKey(first));
         }
         return;
       }
@@ -157,7 +162,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
         e.preventDefault();
         const last = allVisibleEvents[allVisibleEvents.length - 1];
         if (last) {
-          setFocusedEventId(last.event_id);
+          setFocusedEventId(getEventKey(last));
         }
         return;
       }
@@ -194,14 +199,19 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             selectedEventId={selectedEventId}
             focusedEventId={focusedEventId}
             onSelectEvent={(event) => {
-              setFocusedEventId(event.event_id);
+              setFocusedEventId(getEventKey(event));
               onSelectEvent?.(event);
             }}
             onFocusEvent={(event) => {
-              setFocusedEventId(event.event_id);
+              setFocusedEventId(getEventKey(event));
             }}
           />
         ))}
+        {sectors.length === 0 && (
+          <p className="py-8 text-center text-sm text-slate-500">
+            אין אירועים להצגה במצב זה
+          </p>
+        )}
       </div>
     </aside>
   );
