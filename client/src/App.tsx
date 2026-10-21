@@ -14,6 +14,7 @@ export const App: React.FC = () => {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [operationalMode, setOperationalMode] = useState<OperationalMode>('real');
   const [isChecklistsOpen, setIsChecklistsOpen] = useState(false);
+  const [completedTasksByEvent, setCompletedTasksByEvent] = useState<Record<string, string[]>>({});
 
   const activeSector = sectorsState[0];
   const allEvents = sectorsState.flatMap((s) => s.events);
@@ -77,6 +78,10 @@ export const App: React.FC = () => {
               event={selectedEvent}
               onClose={() => setSelectedEventId(null)}
               onUpdateEvent={handleUpdateEvent}
+              completedTaskIds={completedTasksByEvent[selectedEvent.event_id]}
+              onCompletedTasksChange={(eventId, ids) =>
+                setCompletedTasksByEvent((prev) => ({ ...prev, [eventId]: ids }))
+              }
             />
           </div>
         )}

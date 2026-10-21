@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   Clock,
   Check,
+  Calendar,
+  ChevronDown,
 } from 'lucide-react';
 import type { EventItem, EventStatus } from '../types/event';
 
@@ -12,6 +14,8 @@ interface EventDetailsProps {
   event: EventItem;
   onClose: () => void;
   onUpdateEvent?: (updatedEvent: EventItem) => void;
+  completedTaskIds?: string[];
+  onCompletedTasksChange?: (eventId: string, completedTaskIds: string[]) => void;
 }
 
 type TabKey = 'details' | 'tasks' | 'updates' | 'history';
@@ -21,6 +25,13 @@ interface OperationalTask {
   text: string;
   completed: boolean;
 }
+
+const DEFAULT_TASKS: Omit<OperationalTask, 'completed'>[] = [
+  { id: 't1', text: 'העברת התרעה לחמ"ל הרלוונטי וסגירת גזרה' },
+  { id: 't2', text: 'הזנקת כוחות הביטחון, מחסומים וצוותי סריקה' },
+  { id: 't3', text: 'הזנקת מד"א וגורמי רפואה למתן טיפול מיידי' },
+  { id: 't4', text: 'תיאום מול משטרת מחוז ופיקוד העורף' },
+];
 
 interface UpdateEntry {
   id: string;
@@ -63,10 +74,76 @@ const formatTimeAgo = (isoString?: string | null): string => {
   }
 };
 
+const getInitialDate = (isoString?: string | null): string => {
+  if (!isoString) {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '21/10/2026';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return '21/10/2026';
+  }
+};
+
+const getInitialTime = (isoString?: string | null): string => {
+  if (!isoString) return '08:33';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '08:33';
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${mins}`;
+  } catch {
+    return '08:33';
+  }
+};
+
+const buildIsoDateTime = (
+  dateStr: string,
+  timeStr: string,
+  fallbackIso: string
+): string => {
+  try {
+    const parts = dateStr.trim().split(/[/.-]/);
+    if (parts.length === 3) {
+      let day = parseInt(parts[0], 10);
+      let month = parseInt(parts[1], 10);
+      let year = parseInt(parts[2], 10);
+      if (year < 100) year += 2000;
+      if (parts[0].length === 4) {
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        day = parseInt(parts[2], 10);
+      }
+      const timeParts = timeStr.trim().split(':');
+      const hours = parseInt(timeParts[0] || '0', 10);
+      const mins = parseInt(timeParts[1] || '0', 10);
+      const d = new Date(year, month - 1, day, hours, mins, 0);
+      if (!isNaN(d.getTime())) {
+        return d.toISOString();
+      }
+    }
+    return fallbackIso;
+  } catch {
+    return fallbackIso;
+  }
+};
+
 export const EventDetails: React.FC<EventDetailsProps> = ({
   event,
   onClose,
   onUpdateEvent,
+  completedTaskIds,
+  onCompletedTasksChange,
 }) => {
   // Editable event state
   const [currentEvent, setCurrentEvent] = useState<EventItem>(event);
@@ -85,23 +162,74 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   // Edit form state
   const [editTitle, setEditTitle] = useState(event.title);
   const [editDesc, setEditDesc] = useState(event.description);
+  const [editSource, setEditSource] = useState(event.source_label || event.notes || 'מוקד 101');
+  const [editUrgency, setEditUrgency] = useState(event.urgency_label || 'גבוה');
+  const [editLocation, setEditLocation] = useState(
+    event.exact_location || event.sector_description || ''
+  );
+  const [editDate, setEditDate] = useState(() =>
+    getInitialDate(event.start_time || event.created_at)
+  );
+  const [editTime, setEditTime] = useState(() =>
+    getInitialTime(event.start_time || event.created_at)
+  );
   const [editBlueInjured, setEditBlueInjured] = useState<number | ''>(
     event.blue_injured_count ?? ''
   );
   const [editBlueDead, setEditBlueDead] = useState<number | ''>(
     event.blue_death_count ?? ''
   );
+  const [editRedInjured, setEditRedInjured] = useState<number | ''>(
+    event.red_injured_count ?? ''
+  );
+  const [editRedDead, setEditRedDead] = useState<number | ''>(
+    event.red_death_count ?? ''
+  );
   const [editInvolved, setEditInvolved] = useState<number | ''>(
     event.involved_count ?? ''
   );
+  const [secondaryCategory, setSecondaryCategory] = useState<string>(
+    event.categories?.[1] || ''
+  );
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+
+  const primaryCategory =
+    currentEvent.categories?.[0] ||
+    (currentEvent.event_type === 'terror_and_riot'
+      ? 'תלול-מסלול, ירי רקטי ואווירי'
+      : currentEvent.event_type || 'תלול-מסלול, ירי רקטי ואווירי');
+
+  const openEditModal = () => {
+    setEditTitle(currentEvent.title);
+    setEditDesc(currentEvent.description);
+    setEditSource(currentEvent.source_label || currentEvent.notes || 'מוקד 101');
+    setEditUrgency(currentEvent.urgency_label || 'גבוה');
+    setEditLocation(currentEvent.exact_location || currentEvent.sector_description || '');
+    setEditDate(getInitialDate(currentEvent.start_time || currentEvent.created_at));
+    setEditTime(getInitialTime(currentEvent.start_time || currentEvent.created_at));
+    setEditBlueInjured(currentEvent.blue_injured_count ?? '');
+    setEditBlueDead(currentEvent.blue_death_count ?? '');
+    setEditRedInjured(currentEvent.red_injured_count ?? '');
+    setEditRedDead(currentEvent.red_death_count ?? '');
+    setEditInvolved(currentEvent.involved_count ?? '');
+    setSecondaryCategory(currentEvent.categories?.[1] || '');
+    setIsAddingCategory(false);
+    setNewCategoryInput('');
+    setIsEditing(true);
+  };
 
   // Tasks state (no numbers)
-  const [tasks, setTasks] = useState<OperationalTask[]>([
-    { id: 't1', text: 'העברת התרעה לחמ"ל הרלוונטי וסגירת גזרה', completed: false },
-    { id: 't2', text: 'הזנקת כוחות הביטחון, מחסומים וצוותי סריקה', completed: false },
-    { id: 't3', text: 'הזנקת מד"א וגורמי רפואה למתן טיפול מיידי', completed: false },
-    { id: 't4', text: 'תיאום מול משטרת מחוז ופיקוד העורף', completed: false },
-  ]);
+  const [tasks, setTasks] = useState<OperationalTask[]>(() =>
+    DEFAULT_TASKS.map((t) => ({ ...t, completed: completedTaskIds?.includes(t.id) ?? false }))
+  );
+
+  useEffect(() => {
+    onCompletedTasksChange?.(
+      event.event_id,
+      tasks.filter((t) => t.completed).map((t) => t.id)
+    );
+  }, [tasks]);
 
   const TABS: TabKey[] = ['details', 'tasks', 'updates', 'history'];
   const activeTabRef = useRef(activeTab);
@@ -116,7 +244,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   isCloseFocusedRef.current = isCloseFocused;
   const currentEventRef = useRef(currentEvent);
   currentEventRef.current = currentEvent;
+  const isEditingRef = useRef(isEditing);
+  isEditingRef.current = isEditing;
   const startButtonRef = useRef<HTMLButtonElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const updateTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const recInputRef = useRef<HTMLInputElement | null>(null);
@@ -167,6 +298,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       activeTabRef.current = 'tasks';
       setFocusedTaskIndex(0);
       focusedTaskIndexRef.current = 0;
+      // Pull focus off the event card so Enter/Space don't toggle the panel closed
+      sectionRef.current?.focus({ preventScroll: true });
     }
     setIsCloseFocused(false);
     isCloseFocusedRef.current = false;
@@ -198,14 +331,26 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     };
 
     const isModalOpen = (): boolean => {
+      if (isEditingRef.current) return true;
       try {
-        return Boolean(document.querySelector('[role="dialog"], .backdrop-blur-sm'));
+        return Boolean(document.querySelector('[role="dialog"], .fixed.inset-0'));
       } catch {
         return false;
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Already handled elsewhere, e.g. the Enter on the event card that opened this panel
+      if (e.defaultPrevented) return;
+
+      if (isEditingRef.current) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsEditing(false);
+        }
+        return;
+      }
+
       const target = e.target as HTMLElement | null;
       const isInput = isTextInput(target);
       if (isModalOpen()) return;
@@ -469,13 +614,33 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   };
 
   const handleSaveEdit = () => {
+    const categories: string[] = [primaryCategory];
+    if (secondaryCategory.trim()) {
+      categories.push(secondaryCategory.trim());
+    }
+
+    const newStartTime = buildIsoDateTime(
+      editDate,
+      editTime,
+      currentEvent.start_time || currentEvent.created_at || new Date().toISOString()
+    );
+
     const updated: EventItem = {
       ...currentEvent,
-      title: editTitle,
+      title: editTitle.trim() || currentEvent.title,
       description: editDesc,
+      categories,
+      source_label: editSource.trim() || undefined,
+      notes: editSource.trim() || null,
+      urgency_label: editUrgency,
+      exact_location: editLocation.trim() || undefined,
+      sector_description: editLocation.trim() || currentEvent.sector_description,
+      start_time: newStartTime,
       blue_injured_count: editBlueInjured === '' ? null : Number(editBlueInjured),
       blue_death_count: editBlueDead === '' ? null : Number(editBlueDead),
-      involved_count: editInvolved === '' ? 0 : Number(editInvolved),
+      red_injured_count: editRedInjured === '' ? null : Number(editRedInjured),
+      red_death_count: editRedDead === '' ? null : Number(editRedDead),
+      involved_count: editInvolved === '' ? null : Number(editInvolved),
       updated_at: new Date().toISOString(),
     };
     setCurrentEvent(updated);
@@ -485,8 +650,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
 
   return (
     <section
+      ref={sectionRef}
+      tabIndex={-1}
       aria-label="פרטי אירוע"
-      className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-y-auto text-right select-none animate-in fade-in duration-200 dark:bg-slate-900/95 dark:border-slate-800"
+      className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-y-auto text-right select-none animate-in fade-in duration-200 focus:outline-none dark:bg-slate-900/95 dark:border-slate-800"
       dir="rtl"
     >
       {/* 1. TOP HEADER: Navigation & Code */}
@@ -511,8 +678,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-black transition cursor-pointer shadow-2xs dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
+            onClick={openEditModal}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-[#0a3a78] transition cursor-pointer shadow-2xs dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300 dark:hover:bg-slate-700"
             title="עריכת אירוע"
           >
             <Pencil className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
@@ -1239,98 +1406,355 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           onClick={() => setIsEditing(false)}
         >
           <div
-            className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 flex flex-col gap-4 text-right dark:bg-slate-900 dark:border-slate-800"
+            className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-right dark:bg-slate-900 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <h3 className="font-bold text-base text-black dark:text-white">עריכת פרטי אירוע</h3>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex flex-col items-start gap-0.5">
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                  עריכת אירוע
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {currentEvent.code || currentEvent.event_id.toUpperCase()} • {primaryCategory}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-black hover:bg-slate-50 cursor-pointer dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:text-black hover:bg-slate-50 cursor-pointer transition dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                title="סגירה"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-black mb-1 dark:text-slate-200">
-                  כותרת האירוע
-                </label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs text-black focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                />
-              </div>
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+              {/* Box 1: פרטי האירוע */}
+              <div className="relative rounded-xl border border-slate-200 p-4 pt-5 space-y-4 dark:border-slate-700">
+                <span className="absolute -top-2.5 right-4 bg-white px-2 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                  פרטי האירוע
+                </span>
 
-              <div>
-                <label className="block font-semibold text-black mb-1 dark:text-slate-200">תיאור</label>
-                <textarea
-                  rows={3}
-                  value={editDesc}
-                  onChange={(e) => setEditDesc(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs text-black focus:outline-none focus:border-blue-500 resize-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                />
-              </div>
+                {/* קטגוריה ראשית */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    קטגוריה ראשית
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-800">
+                      {primaryCategory}
+                    </span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                      נקבעת בקליטה ואינה ניתנת לשינוי
+                    </span>
+                  </div>
+                  {secondaryCategory ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">
+                        <span>{secondaryCategory}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSecondaryCategory('')}
+                          className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                          title="הסר קטגוריה נוספת"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </div>
+                  ) : isAddingCategory ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="text"
+                        placeholder="שם קטגוריה נוספת..."
+                        value={newCategoryInput}
+                        onChange={(e) => setNewCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (newCategoryInput.trim()) {
+                              setSecondaryCategory(newCategoryInput.trim());
+                              setIsAddingCategory(false);
+                            }
+                          }
+                        }}
+                        className="h-8 px-2.5 rounded-lg border border-slate-200 text-xs text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-white focus:outline-none focus:border-blue-500"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newCategoryInput.trim()) {
+                            setSecondaryCategory(newCategoryInput.trim());
+                            setIsAddingCategory(false);
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-medium cursor-pointer"
+                      >
+                        הוסף
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingCategory(false)}
+                        className="px-2 py-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer"
+                      >
+                        ביטול
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCategory(true)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer pt-0.5"
+                    >
+                      <span className="font-bold">+ שיוך לקטגוריה נוספת</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-normal">
+                        • רשות, רק כשהאירוע חוצה קטגוריות
+                      </span>
+                    </button>
+                  )}
+                </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block font-semibold text-black mb-1 dark:text-slate-200">
-                    פצועים (כחול)
+                {/* כותרת */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    כותרת *
                   </label>
                   <input
-                    type="number"
-                    value={editBlueInjured}
-                    onChange={(e) =>
-                      setEditBlueInjured(e.target.value === '' ? '' : Number(e.target.value))
-                    }
-                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs text-black focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                   />
                 </div>
-                <div>
-                  <label className="block font-semibold text-black mb-1 dark:text-slate-200">
-                    הרוגים (כחול)
+
+                {/* תיאור */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    תיאור
                   </label>
-                  <input
-                    type="number"
-                    value={editBlueDead}
-                    onChange={(e) =>
-                      setEditBlueDead(e.target.value === '' ? '' : Number(e.target.value))
-                    }
-                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs text-black focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  <textarea
+                    rows={3}
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    className="w-full p-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 resize-y dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                   />
                 </div>
-                <div>
-                  <label className="block font-semibold text-black mb-1 dark:text-slate-200">
-                    מעורבים
+
+                {/* מקור המידע & רמת דחיפות */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      מקור המידע
+                    </label>
+                    <input
+                      type="text"
+                      value={editSource}
+                      onChange={(e) => setEditSource(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      רמת דחיפות
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={editUrgency}
+                        onChange={(e) => setEditUrgency(e.target.value)}
+                        className="w-full h-10 px-3 pl-8 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:border-blue-500 appearance-none cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                      >
+                        <option value="מיידי">מיידי</option>
+                        <option value="גבוה">גבוה</option>
+                        <option value="גבוהה">גבוהה</option>
+                        <option value="בינונית">בינונית</option>
+                        <option value="נמוכה">נמוכה</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Box 2: מיקום וזמן */}
+              <div className="relative rounded-xl border border-slate-200 p-4 pt-5 space-y-4 dark:border-slate-700">
+                <span className="absolute -top-2.5 right-4 bg-white px-2 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                  מיקום וזמן
+                </span>
+
+                {/* מיקום (תיאור) * */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    מיקום (תיאור) *
                   </label>
                   <input
-                    type="number"
-                    value={editInvolved}
-                    onChange={(e) =>
-                      setEditInvolved(e.target.value === '' ? '' : Number(e.target.value))
-                    }
-                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs text-black focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    type="text"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  />
+                </div>
+
+                {/* תאריך התרחשות & שעת התרחשות */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      תאריך התרחשות
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className="w-full h-10 pr-9 pl-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                      />
+                      <Calendar className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                      שעת התרחשות
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={editTime}
+                        onChange={(e) => setEditTime(e.target.value)}
+                        className="w-full h-10 pr-9 pl-3 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                      />
+                      <Clock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Box 3: נפגעים, כוחות ונוכחות ישראלית */}
+              <div className="relative rounded-xl border border-slate-200 p-4 pt-5 space-y-4 dark:border-slate-700">
+                <span className="absolute -top-2.5 right-4 bg-white px-2 text-xs font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                  נפגעים, כוחות ונוכחות ישראלית
+                </span>
+
+                {/* צד כחול */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300">
+                        כחול
+                      </span>
+                      <span>צד כחול – פצועים</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="לא ידוע"
+                      value={editBlueInjured === '' ? '' : editBlueInjured}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        if (val === '' || val === 'לא ידוע') setEditBlueInjured('');
+                        else if (!isNaN(Number(val))) setEditBlueInjured(Number(val));
+                      }}
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300">
+                        כחול
+                      </span>
+                      <span>צד כחול – הרוגים</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="לא ידוע"
+                      value={editBlueDead === '' ? '' : editBlueDead}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        if (val === '' || val === 'לא ידוע') setEditBlueDead('');
+                        else if (!isNaN(Number(val))) setEditBlueDead(Number(val));
+                      }}
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+
+                {/* צד אדום */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-rose-200 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:border-rose-800 dark:text-rose-300">
+                        אדום
+                      </span>
+                      <span>צד אדום – פצועים</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="לא ידוע"
+                      value={editRedInjured === '' ? '' : editRedInjured}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        if (val === '' || val === 'לא ידוע') setEditRedInjured('');
+                        else if (!isNaN(Number(val))) setEditRedInjured(Number(val));
+                      }}
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-rose-200 bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:border-rose-800 dark:text-rose-300">
+                        אדום
+                      </span>
+                      <span>צד אדום – הרוגים</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="לא ידוע"
+                      value={editRedDead === '' ? '' : editRedDead}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        if (val === '' || val === 'לא ידוע') setEditRedDead('');
+                        else if (!isNaN(Number(val))) setEditRedDead(Number(val));
+                      }}
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+
+                {/* מעורבים / מושפעים */}
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    מעורבים / מושפעים
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="לא ידוע"
+                    value={editInvolved === '' ? '' : editInvolved}
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      if (val === '' || val === 'לא ידוע') setEditInvolved('');
+                      else if (!isNaN(Number(val))) setEditInvolved(Number(val));
+                    }}
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            {/* Modal Sticky Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl dark:border-slate-800 dark:bg-slate-900 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-black hover:bg-slate-50 cursor-pointer dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="px-5 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-sm cursor-pointer transition dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 ביטול
               </button>
               <button
                 type="button"
                 onClick={handleSaveEdit}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+                className="px-6 py-2.5 rounded-lg bg-[#0f172a] hover:bg-black text-white font-bold text-sm shadow-sm cursor-pointer transition dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 שמירת שינויים
               </button>
