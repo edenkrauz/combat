@@ -14,6 +14,8 @@ interface EventDetailsProps {
   event: EventItem;
   onClose: () => void;
   onUpdateEvent?: (updatedEvent: EventItem) => void;
+  completedTaskIds?: string[];
+  onCompletedTasksChange?: (eventId: string, completedTaskIds: string[]) => void;
 }
 
 type TabKey = 'details' | 'tasks' | 'updates' | 'history';
@@ -23,6 +25,13 @@ interface OperationalTask {
   text: string;
   completed: boolean;
 }
+
+const DEFAULT_TASKS: Omit<OperationalTask, 'completed'>[] = [
+  { id: 't1', text: 'העברת התרעה לחמ"ל הרלוונטי וסגירת גזרה' },
+  { id: 't2', text: 'הזנקת כוחות הביטחון, מחסומים וצוותי סריקה' },
+  { id: 't3', text: 'הזנקת מד"א וגורמי רפואה למתן טיפול מיידי' },
+  { id: 't4', text: 'תיאום מול משטרת מחוז ופיקוד העורף' },
+];
 
 interface UpdateEntry {
   id: string;
@@ -133,6 +142,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   event,
   onClose,
   onUpdateEvent,
+  completedTaskIds,
+  onCompletedTasksChange,
 }) => {
   // Editable event state
   const [currentEvent, setCurrentEvent] = useState<EventItem>(event);
@@ -209,12 +220,16 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   };
 
   // Tasks state (no numbers)
-  const [tasks, setTasks] = useState<OperationalTask[]>([
-    { id: 't1', text: 'העברת התרעה לחמ"ל הרלוונטי וסגירת גזרה', completed: false },
-    { id: 't2', text: 'הזנקת כוחות הביטחון, מחסומים וצוותי סריקה', completed: false },
-    { id: 't3', text: 'הזנקת מד"א וגורמי רפואה למתן טיפול מיידי', completed: false },
-    { id: 't4', text: 'תיאום מול משטרת מחוז ופיקוד העורף', completed: false },
-  ]);
+  const [tasks, setTasks] = useState<OperationalTask[]>(() =>
+    DEFAULT_TASKS.map((t) => ({ ...t, completed: completedTaskIds?.includes(t.id) ?? false }))
+  );
+
+  useEffect(() => {
+    onCompletedTasksChange?.(
+      event.event_id,
+      tasks.filter((t) => t.completed).map((t) => t.id)
+    );
+  }, [tasks]);
 
   const TABS: TabKey[] = ['details', 'tasks', 'updates', 'history'];
   const activeTabRef = useRef(activeTab);
@@ -232,6 +247,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   const isEditingRef = useRef(isEditing);
   isEditingRef.current = isEditing;
   const startButtonRef = useRef<HTMLButtonElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const updateTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const recInputRef = useRef<HTMLInputElement | null>(null);
@@ -282,6 +298,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       activeTabRef.current = 'tasks';
       setFocusedTaskIndex(0);
       focusedTaskIndexRef.current = 0;
+      // Pull focus off the event card so Enter/Space don't toggle the panel closed
+      sectionRef.current?.focus({ preventScroll: true });
     }
     setIsCloseFocused(false);
     isCloseFocusedRef.current = false;
@@ -315,7 +333,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     const isModalOpen = (): boolean => {
       if (isEditingRef.current) return true;
       try {
-        return Boolean(document.querySelector('[role="dialog"], .backdrop-blur-sm, .backdrop-blur-xs'));
+        return Boolean(document.querySelector('[role="dialog"], .fixed.inset-0'));
       } catch {
         return false;
       }
@@ -629,8 +647,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
 
   return (
     <section
+      ref={sectionRef}
+      tabIndex={-1}
       aria-label="פרטי אירוע"
-      className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-y-auto text-right select-none animate-in fade-in duration-200 dark:bg-slate-900/95 dark:border-slate-800"
+      className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-y-auto text-right select-none animate-in fade-in duration-200 focus:outline-none dark:bg-slate-900/95 dark:border-slate-800"
       dir="rtl"
     >
       {/* 1. TOP HEADER: Navigation & Code */}
