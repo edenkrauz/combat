@@ -59,7 +59,7 @@ export const MapView: React.FC = () => {
           fill="none"
           stroke="#cbd5e1"
           strokeWidth="1.5"
-          className="dark:stroke-slate-750"
+          className="dark:stroke-slate-700"
         />
 
         {/* Heatmap overlay */}

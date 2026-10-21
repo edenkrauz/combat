@@ -165,7 +165,7 @@ export const ChecklistTemplatesModal: React.FC<ChecklistTemplatesModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
       dir="rtl"
       onClick={onClose}
     >
@@ -188,11 +188,13 @@ export const ChecklistTemplatesModal: React.FC<ChecklistTemplatesModalProps> = (
           </button>
         </div>
 
-        <div className="w-full bg-[#f8fafc] border border-slate-200/90 rounded-xl py-2 px-3 text-center text-xs text-slate-600 font-normal dark:bg-slate-850 dark:border-slate-800 dark:text-slate-300">
+        {/* Info Banner */}
+        <div className="w-full bg-[#f8fafc] border border-slate-200/90 rounded-xl py-2 px-3 text-center text-xs text-slate-600 font-normal dark:bg-slate-800/60 dark:border-slate-700/80 dark:text-slate-300">
           כל משימות התבנית הן משימות חובה – אירוע נסגר רק לאחר השלמת כולן.
         </div>
 
-        <div className="flex items-center justify-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 gap-1 dark:bg-slate-800 dark:border-slate-700">
+        {/* Category Tabs */}
+        <div className="flex items-center justify-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 gap-1 dark:bg-slate-800/80 dark:border-slate-700">
           {categories.map((category) => (
             <button
               key={category.category_id}
@@ -227,7 +229,7 @@ export const ChecklistTemplatesModal: React.FC<ChecklistTemplatesModalProps> = (
             tasks.map((task, index) => (
               <div
                 key={`${index}-${task}`}
-                className="flex items-center justify-between p-2.5 bg-white border border-slate-200/90 rounded-xl hover:border-slate-300 transition dark:bg-slate-850 dark:border-slate-800 dark:hover:border-slate-700"
+                className="flex items-center justify-between p-2.5 bg-white border border-slate-200/90 rounded-xl hover:border-slate-300 transition dark:bg-slate-800/80 dark:border-slate-700/80 dark:hover:border-slate-600 dark:hover:bg-slate-800"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0 pr-1">
                   <span className="font-mono text-xs font-semibold text-slate-500 shrink-0 w-3 text-center dark:text-slate-400">
@@ -289,20 +291,21 @@ export const ChecklistTemplatesModal: React.FC<ChecklistTemplatesModalProps> = (
             onClick={() => void handleAdd()}
             disabled={!hasInputText || isSaving || activeCategoryId === null}
             className={`h-9 px-4 rounded-xl border text-xs font-semibold transition whitespace-nowrap ${
-              hasInputText && !isSaving
-                ? 'border-slate-300 bg-white hover:bg-slate-50 text-slate-800 shadow-2xs cursor-pointer dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-750'
-                : 'border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed dark:bg-slate-850 dark:border-slate-800 dark:text-slate-600'
+              hasInputText && !isSaving && activeCategoryId !== null
+                ? 'border-blue-600 bg-blue-600 hover:bg-blue-700 text-white shadow-2xs cursor-pointer dark:border-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 dark:text-white'
+                : 'border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed dark:bg-slate-800/40 dark:border-slate-700/60 dark:text-slate-600'
             }`}
           >
             הוספה
           </button>
         </div>
 
+        {/* Footer with Close Button on Left (in RTL) */}
         <div className="flex justify-start pt-1">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-2xs cursor-pointer transition dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-750"
+            className="px-5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold shadow-2xs cursor-pointer transition dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             סגירה
           </button>

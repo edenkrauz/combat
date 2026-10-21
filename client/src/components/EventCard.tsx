@@ -27,9 +27,9 @@ export const EventCard: React.FC<EventCardProps> = ({
 
     if (isImmediate) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#fff0f3] text-[#b91c1c] border border-rose-200/90 whitespace-nowrap">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#fff0f3] text-[#b91c1c] border border-rose-200/90 whitespace-nowrap dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
           <span>דחיפות מיידי</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-500"></span>
         </span>
       );
     }
@@ -37,14 +37,14 @@ export const EventCard: React.FC<EventCardProps> = ({
     switch (event.threat_severity) {
       case 'high':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#fff0f3] text-rose-600 border border-rose-200/80 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#fff0f3] text-rose-600 border border-rose-200/80 whitespace-nowrap dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60">
             <span>{event.threat_label || 'דחיפות גבוהה'}</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 dark:bg-rose-500"></span>
           </span>
         );
       case 'medium':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60">
             <span>{event.threat_label || 'סיכון בינוני'}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
           </span>
@@ -52,7 +52,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       case 'low':
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60">
             <span>{event.threat_label || 'סיכון נמוך'}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           </span>
@@ -86,15 +86,15 @@ export const EventCard: React.FC<EventCardProps> = ({
       }}
       className={`rounded-xl p-3.5 transition-all text-right cursor-pointer select-none focus:outline-none ${
         isFocused
-          ? 'border-blue-500 ring-2 ring-blue-500 shadow-md bg-blue-50/30'
+          ? 'border-blue-500 ring-2 ring-blue-500 shadow-md bg-blue-50/30 dark:bg-blue-950/40 dark:border-blue-500 dark:ring-blue-500/60'
           : isSelected
-          ? 'border-[1.5px] border-[#3b82f6] bg-[#eff6ff] shadow-xs'
-          : 'border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+          ? 'border-[1.5px] border-[#3b82f6] bg-[#eff6ff] shadow-xs dark:bg-blue-950/30 dark:border-blue-500'
+          : 'border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs dark:bg-slate-800/50 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/80'
       }`}
     >
       {/* 1. Top Header: Title & Urgency badge */}
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-bold text-slate-900 text-[14px] leading-snug flex-1">
+        <h3 className="font-bold text-slate-900 text-[14px] leading-snug flex-1 dark:text-white">
           {event.title}
         </h3>
         <div className="shrink-0">{getThreatBadge()}</div>
@@ -108,8 +108,8 @@ export const EventCard: React.FC<EventCardProps> = ({
               key={idx}
               className={`px-2 py-0.5 rounded text-[11px] font-medium border ${
                 isSelected
-                  ? 'bg-white/90 text-slate-800 border-blue-200/80'
-                  : 'bg-slate-100 text-slate-700 border-slate-200/70'
+                  ? 'bg-white/90 text-slate-800 border-blue-200/80 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700/60'
+                  : 'bg-slate-100 text-slate-700 border-slate-200/70 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
               }`}
             >
               {idx === 0 ? `• ${cat}` : `+ ${cat}`}
@@ -119,46 +119,46 @@ export const EventCard: React.FC<EventCardProps> = ({
       )}
 
       {/* 3. Description */}
-      <p className="text-slate-600 text-[12.5px] leading-relaxed mt-2 font-normal line-clamp-2">
+      <p className="text-slate-600 text-[12.5px] leading-relaxed mt-2 font-normal line-clamp-2 dark:text-slate-300">
         {event.description}
       </p>
 
       {/* 4. Location and Time Row */}
       <div className="flex items-center justify-between text-xs mt-2.5 pt-1">
-        <div className="flex items-center gap-1 text-slate-600 min-w-0 flex-1">
-          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-1 text-slate-600 min-w-0 flex-1 dark:text-slate-400">
+          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 dark:text-slate-500" />
           <span className="truncate text-[12px]">
             {event.sector_description || event.sector}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-slate-500 shrink-0 text-[12px]">
+        <div className="flex items-center gap-1 text-slate-500 shrink-0 text-[12px] dark:text-slate-400">
           <span>{event.time_display || '20/10 • 12:02'}</span>
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
+          <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
         </div>
       </div>
 
       {/* 5. Casualties Row (Blue and Red labels) */}
       <div
         className={`flex items-center gap-3 text-xs mt-2.5 pt-2 border-t ${
-          isSelected ? 'border-blue-200/70' : 'border-slate-100'
+          isSelected ? 'border-blue-200/70 dark:border-blue-900/50' : 'border-slate-100 dark:border-slate-800'
         }`}
       >
         {/* Blue side */}
         <div className="flex items-center gap-1.5">
-          <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold text-blue-600 border border-blue-200 bg-blue-50/80">
+          <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold text-blue-600 border border-blue-200 bg-blue-50/80 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/70">
             כחול
           </span>
-          <span className="text-slate-800 text-[11.5px] font-medium">
+          <span className="text-slate-800 text-[11.5px] font-medium dark:text-slate-200">
             {formatCasualties(event.blue_injured_count, event.blue_death_count)}
           </span>
         </div>
 
         {/* Red side */}
         <div className="flex items-center gap-1.5">
-          <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold text-rose-600 border border-rose-200 bg-rose-50/80">
+          <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold text-rose-600 border border-rose-200 bg-rose-50/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/70">
             אדום
           </span>
-          <span className="text-slate-800 text-[11.5px] font-medium">
+          <span className="text-slate-800 text-[11.5px] font-medium dark:text-slate-200">
             {formatCasualties(event.red_injured_count, event.red_death_count)}
           </span>
         </div>
@@ -168,11 +168,11 @@ export const EventCard: React.FC<EventCardProps> = ({
       {event.notes && (
         <div
           className={`flex items-center gap-1.5 text-slate-600 text-[11.5px] mt-2 pt-1 border-t ${
-            isSelected ? 'border-blue-200/50' : 'border-slate-50'
+            isSelected ? 'border-blue-200/50 dark:border-blue-900/50' : 'border-slate-50 dark:border-slate-800/80'
           }`}
         >
-          <Menu className="w-3.5 h-3.5 text-slate-400 shrink-0" strokeWidth={2.2} />
-          <span className="truncate">{event.notes}</span>
+          <Menu className="w-3.5 h-3.5 text-slate-400 shrink-0 dark:text-slate-500" strokeWidth={2.2} />
+          <span className="truncate dark:text-slate-400">{event.notes}</span>
         </div>
       )}
     </article>

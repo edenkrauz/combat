@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 @import "leaflet/dist/leaflet.css";
 
 :root {
@@ -12,6 +13,11 @@ body {
   direction: rtl;
 }
 
+.dark body {
+  background-color: #0b0f17;
+  color: #f1f5f9;
+}
+
 /* Custom Leaflet Styling */
 .leaflet-container {
   font-family: inherit;
@@ -21,10 +27,14 @@ body {
   height: 100%;
 }
 
-/* Light grey tactical basemap styling */
-.map-tiles-light-grey {
-  filter: grayscale(100%) brightness(108%) contrast(85%);
-  -webkit-filter: grayscale(100%) brightness(108%) contrast(85%);
+.dark .leaflet-container {
+  background-color: #0b0f17;
+}
+
+/* High-tech tactical dark mode map styling */
+.dark .map-tiles-light-grey {
+  filter: invert(100%) hue-rotate(180deg) brightness(88%) contrast(92%);
+  -webkit-filter: invert(100%) hue-rotate(180deg) brightness(88%) contrast(92%);
 }
 
 /* Hide default leaflet controls since we provide a custom floating toolbar */
@@ -46,14 +56,26 @@ button, input, select, textarea {
   background: #f1f5f9;
   border-radius: 4px;
 }
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: #0f172a;
+}
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #94a3b8;
   border-radius: 4px;
 }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+}
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #64748b;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #94a3b8 #f1f5f9;
+}
+.dark .custom-scrollbar {
+  scrollbar-color: #334155 #0f172a;
 }

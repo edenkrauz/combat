@@ -18,7 +18,6 @@ export const App: React.FC = () => {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [operationalMode, setOperationalMode] = useState<OperationalMode>('real');
   const [isChecklistsOpen, setIsChecklistsOpen] = useState(false);
-
   useEffect(() => {
     let isCurrentRequest = true;
 
