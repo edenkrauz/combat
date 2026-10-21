@@ -319,14 +319,14 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
 
   return (
     <aside
-      className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-hidden"
+      className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-hidden dark:bg-slate-900/95 dark:border-slate-800"
       dir="rtl"
     >
       {/* Panel Header */}
-      <div className="pb-3 border-b border-slate-100 mb-3 flex items-center justify-between shrink-0">
+      <div className="pb-3 border-b border-slate-100 mb-3 flex items-center justify-between shrink-0 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold text-slate-800">אירועים</h2>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">אירועים</h2>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             {hasActiveFilters
               ? `${totalFilteredCount} / ${totalEventsCount}`
               : totalEventsCount}
@@ -338,21 +338,21 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             <button
               type="button"
               onClick={resetAllFilters}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer transition-colors"
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer transition-colors dark:text-blue-400 dark:hover:text-blue-300"
             >
               איפוס סינונים
             </button>
           )}
 
           <div
-            className="flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-50 border border-slate-200/80 rounded-md px-2 py-0.5 select-none"
+            className="flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-50 border border-slate-200/80 rounded-md px-2 py-0.5 select-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
             title="ניווט באמצעות חיצים ו-Enter"
           >
             <span>ניווט:</span>
-            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↑</kbd>
-            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↓</kbd>
-            <span className="text-slate-300 mx-0.5">•</span>
-            <kbd className="px-1.5 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px]">Enter</kbd>
+            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px] dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">↑</kbd>
+            <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px] dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">↓</kbd>
+            <span className="text-slate-300 mx-0.5 dark:text-slate-600">•</span>
+            <kbd className="px-1.5 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px] dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">Enter</kbd>
           </div>
         </div>
       </div>
@@ -362,19 +362,19 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
         <div className="flex items-center gap-2">
           {/* Main Search Bar */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none dark:text-slate-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="חיפוש לפי כותרת, מיקום, תיאור או מזהה"
-              className="h-10 w-full pr-9 pl-8 text-xs bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 focus:border-blue-500 rounded-xl outline-none transition-colors text-slate-800 placeholder:text-slate-400"
+              className="h-10 w-full pr-9 pl-8 text-xs bg-slate-50 hover:bg-slate-50/80 focus:bg-white border border-slate-200 focus:border-blue-500 rounded-xl outline-none transition-colors text-slate-800 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-blue-500 dark:focus:bg-slate-800"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-700"
                 title="נקה חיפוש"
               >
                 <X className="w-3.5 h-3.5" />
@@ -390,10 +390,10 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             title={isFilterOpen ? 'הסתר סינון מתקדם' : 'הצג סינון מתקדם'}
             className={`relative h-10 w-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center shrink-0 ${
               isFilterOpen
-                ? 'bg-blue-50 border-blue-300 text-blue-600 shadow-xs'
+                ? 'bg-blue-50 border-blue-300 text-blue-600 shadow-xs dark:bg-blue-950/60 dark:border-blue-700 dark:text-blue-400'
                 : hasSecondaryFilters
-                ? 'bg-blue-50/60 border-blue-200 text-blue-600'
-                : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                ? 'bg-blue-50/60 border-blue-200 text-blue-600 dark:bg-blue-950/40 dark:border-blue-800 dark:text-blue-400'
+                : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
             }`}
           >
             <svg
@@ -414,7 +414,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             </svg>
 
             {hasSecondaryFilters && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white dark:border-slate-900" />
             )}
           </button>
         </div>
@@ -423,7 +423,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
         <div
           className={`transition-all duration-300 ease-in-out overflow-hidden ${
             isFilterOpen
-              ? 'max-h-[300px] opacity-100 mt-3 pt-3 border-t border-slate-100'
+              ? 'max-h-[300px] opacity-100 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800'
               : 'max-h-0 opacity-0 pointer-events-none mt-0 pt-0'
           }`}
         >
@@ -432,55 +432,55 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
             <div className="grid grid-cols-2 gap-2.5">
               {/* סטטוס */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1 dark:text-slate-300">
                   סטטוס
                 </label>
                 <div className="relative">
                   <select
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
+                    className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500 dark:focus:bg-slate-800"
                   >
                     <option value="all">הכול</option>
                     <option value="open">פתוח</option>
                     <option value="in_progress">בטיפול</option>
                     <option value="closed">סגור</option>
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none dark:text-slate-500" />
                 </div>
               </div>
 
               {/* רמת דחיפות */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1 dark:text-slate-300">
                   רמת דחיפות
                 </label>
                 <div className="relative">
                   <select
                     value={selectedUrgency}
                     onChange={(e) => setSelectedUrgency(e.target.value)}
-                    className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
+                    className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500 dark:focus:bg-slate-800"
                   >
                     <option value="all">הכול</option>
                     <option value="high">סיכון גבוה</option>
                     <option value="medium">סיכון בינוני</option>
                     <option value="low">סיכון נמוך</option>
                   </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none dark:text-slate-500" />
                 </div>
               </div>
             </div>
 
             {/* סוג אירוע */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1 dark:text-slate-300">
                 סוג אירוע
               </label>
               <div className="relative">
                 <select
                   value={selectedEventType}
                   onChange={(e) => setSelectedEventType(e.target.value)}
-                  className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer"
+                  className="h-10 w-full text-xs pr-3 pl-8 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors appearance-none cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500 dark:focus:bg-slate-800"
                 >
                   <option value="all">כל הסוגים</option>
                   {availableEventTypes.map((type) => (
@@ -489,7 +489,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none dark:text-slate-500" />
               </div>
             </div>
           </div>
@@ -502,11 +502,11 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
         className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 pl-1 custom-scrollbar"
       >
         {totalFilteredCount === 0 ? (
-          <div className="py-10 text-center px-4 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 mt-2">
-            <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+          <div className="py-10 text-center px-4 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 mt-2 dark:bg-slate-800/40 dark:border-slate-700/60">
+            <div className="w-10 h-10 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 dark:bg-slate-800 dark:text-slate-400">
               <Search className="w-5 h-5" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">לא נמצאו אירועים מתאימים</p>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">לא נמצאו אירועים מתאימים</p>
             <p className="text-xs text-slate-400 mt-1">
               נסה לשנות את החיפוש או לאפס את הסינונים
             </p>
@@ -514,7 +514,7 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
               <button
                 type="button"
                 onClick={resetAllFilters}
-                className="mt-3 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                className="mt-3 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer dark:bg-blue-950/60 dark:text-blue-400 dark:hover:bg-blue-900/60"
               >
                 איפוס כל המסננים
               </button>
