@@ -31,7 +31,7 @@ export interface DbEvent {
   code?: string; // e.g. "INC-2070"
   categories?: string[]; // e.g. ["פח\"ע", "הפרות סדר ואלימות המונית"]
   urgency_label?: string; // e.g. "מיידי", "גבוהה", "בינונית"
-  involved_count?: number; // e.g. 80
+  involved_count?: number | null; // e.g. 80
   geo_location_hierarchy?: string; // e.g. "אסיה > ישראל > מרכז"
   exact_location?: string; // e.g. "כניסה לעיר, ירושלים"
   source_label?: string; // e.g. "מוקד 100 + דיווחי שטח"
