@@ -229,6 +229,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   isCloseFocusedRef.current = isCloseFocused;
   const currentEventRef = useRef(currentEvent);
   currentEventRef.current = currentEvent;
+  const isEditingRef = useRef(isEditing);
+  isEditingRef.current = isEditing;
   const startButtonRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const updateTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -311,7 +313,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     };
 
     const isModalOpen = (): boolean => {
-      if (isEditing) return true;
+      if (isEditingRef.current) return true;
       try {
         return Boolean(document.querySelector('[role="dialog"], .backdrop-blur-sm, .backdrop-blur-xs'));
       } catch {
@@ -320,7 +322,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isEditing) {
+      if (isEditingRef.current) {
         if (e.key === 'Escape') {
           e.preventDefault();
           setIsEditing(false);
