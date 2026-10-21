@@ -1,0 +1,4 @@
+# Explicitly disable all GitLab CI/CD pipelines across all branches and events
+workflow:
+  rules:
+    - when: never

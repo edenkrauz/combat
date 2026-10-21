@@ -44,7 +44,13 @@ const runConsumer = async () => {
 
       try {
         const addedEvent = await addEvent(eventData);
+        if (!addedEvent) {
+          throw new Error(
+            `Could not add event`,
+          );
+        }
         console.log('Added event:', addedEvent);
+    
 
         const updatedEvent = await updateEvent(
           addedEvent.event_id,
@@ -53,7 +59,7 @@ const runConsumer = async () => {
         );
         if (!updatedEvent) {
           throw new Error(
-            `Could not update event ${addedEvent.event_id} in reality ${addedEvent.reality_id}`,
+            `Could not update event`,
           );
         }
         console.log('Updated event:', updatedEvent);

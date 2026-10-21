@@ -1,0 +1,8 @@
+packages:
+  - 'client'
+  - 'server'
+
+allowBuilds:
+  core-js: set this to true or false
+  esbuild: true
+  pnpm: set this to true or false
