@@ -6,11 +6,13 @@ import { useLeafletMap } from '../hooks/useLeafletMap';
 export interface MapProps {
   events?: EventItem[];
   sector?: SectorGroup;
+  selectedEventId?: string | null;
   onEventSelect?: (event: EventItem) => void;
   className?: string;
 }
 
 export const Map: React.FC<MapProps> = ({
+  events = [],
   sector,
   className = '',
 }) => {
@@ -21,7 +23,7 @@ export const Map: React.FC<MapProps> = ({
     zoomIn,
     zoomOut,
     recenter,
-  } = useLeafletMap();
+  } = useLeafletMap({ events });
 
   const activeSectorName = sector?.display_name || 'מרכז • ישראל';
   const tensionLabel = sector?.tension_label || 'מתיחות בינונית';
