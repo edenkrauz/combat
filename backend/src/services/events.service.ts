@@ -10,7 +10,7 @@ const eventSelection = `
     SELECT COALESCE(category.display_name, event_category.name)
     FROM unnest(e.categories) WITH ORDINALITY AS event_category(name, position)
     LEFT JOIN event_categories category
-      ON category.category_id::text = event_category.name
+      ON category.display_name::text = event_category.name
     ORDER BY event_category.position
   ) AS categories,
   e.is_deleted,
