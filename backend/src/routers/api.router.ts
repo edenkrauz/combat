@@ -538,6 +538,10 @@ apiRouter.patch(
  *         in: query
  *         schema:
  *           type: string
+ *       - name: event_id
+ *         in: query
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Audit log entries.
@@ -586,7 +590,11 @@ apiRouter.get('/audit-log', async (req: Request, res: Response) => {
     typeof req.query.sector === 'string' && req.query.sector.trim()
       ? req.query.sector
       : undefined;
-  return res.json(await getAuditLogEntries(realityId, sector));
+  const eventId =
+    typeof req.query.event_id === 'string' && req.query.event_id.trim()
+      ? req.query.event_id
+      : undefined;
+  return res.json(await getAuditLogEntries(realityId, sector, eventId));
 });
 
 apiRouter.post('/audit-log', async (req: Request, res: Response) => {

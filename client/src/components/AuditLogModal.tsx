@@ -5,7 +5,7 @@ import type { OperationalMode } from './TopNavbar';
 interface AuditLogModalProps {
   isOpen: boolean;
   onClose: () => void;
-  sector: string; // e.g. "מרכז"
+  sector?: string; // omit to show all sectors
   mode: OperationalMode;
 }
 
@@ -43,7 +43,8 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
   useEffect(() => {
     if (!isOpen) return;
     const controller = new AbortController();
-    const params = new URLSearchParams({ reality_id: String(REALITY_ID[mode]), sector });
+    const params = new URLSearchParams({ reality_id: String(REALITY_ID[mode]) });
+    if (sector) params.set('sector', sector);
 
     setLoadState('loading');
     fetch(`/api/audit-log?${params}`, { signal: controller.signal })
@@ -81,7 +82,7 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">יומן ביקורת</h2>
             <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
-              {mode === 'real' ? 'מצב אמת' : 'מצב תרגיל'} • גזרה: {sector}
+              {mode === 'real' ? 'מצב אמת' : 'מצב תרגיל'} • גזרה: {sector ?? 'כל הגזרות'}
             </p>
           </div>
           <button

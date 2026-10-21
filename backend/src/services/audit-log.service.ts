@@ -7,15 +7,18 @@ import type {
 export async function getAuditLogEntries(
   realityId: number,
   sector?: string,
+  eventId?: string,
 ): Promise<AuditLogEntry[]> {
   const { rows } = await pool.query<AuditLogEntry>(
     `
       SELECT *
       FROM audit_log
-      WHERE reality_id = $1 AND ($2::text IS NULL OR sector = $2)
+      WHERE reality_id = $1
+        AND ($2::text IS NULL OR sector = $2)
+        AND ($3::text IS NULL OR event_id = $3)
       ORDER BY occurred_at DESC, log_id DESC
     `,
-    [realityId, sector ?? null],
+    [realityId, sector ?? null, eventId ?? null],
   );
   return rows;
 }

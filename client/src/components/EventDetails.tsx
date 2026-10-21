@@ -12,7 +12,9 @@ import {
   CHECKLIST_TASKS_UPDATED_EVENT,
   getTasksForCategories,
 } from '../api/taskCategories';
+import { logEventAction } from '../api/auditLog';
 import type { EventItem, EventStatus } from '../types/event';
+import { getEventKey } from '../types/event';
 import { EventSummaryModal } from './EventSummaryModal';
 
 interface EventDetailsProps {
@@ -39,6 +41,42 @@ interface UpdateEntry {
   author: string;
   text: string;
 }
+
+interface HistoryEntry {
+  log_id: number | string;
+  occurred_at: string;
+  action: string;
+}
+
+const STATUS_LABELS: Record<EventStatus, string> = {
+  open: 'פתוח',
+  in_progress: 'בטיפול',
+  closed: 'סגור',
+};
+
+const normalizeTaskText = (text: string) =>
+  text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
+
+// Keyed by task text (not index) so checks survive checklist template edits
+const completedTasksStorageKey = (event: Pick<EventItem, 'event_id' | 'reality_id'>) =>
+  `completed-tasks:${getEventKey(event)}`;
+
+const loadCompletedTasks = (event: Pick<EventItem, 'event_id' | 'reality_id'>): Set<string> => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(completedTasksStorageKey(event)) ?? '[]');
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const saveCompletedTasks = (
+  event: Pick<EventItem, 'event_id' | 'reality_id'>,
+  tasks: { text: string; completed: boolean }[],
+) => {
+  const completed = tasks.filter((t) => t.completed).map((t) => normalizeTaskText(t.text));
+  localStorage.setItem(completedTasksStorageKey(event), JSON.stringify(completed));
+};
 
 const formatDateTime = (isoString?: string | null): string => {
   if (!isoString) return '—';
@@ -272,6 +310,44 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     return () => clearInterval(timer);
   }, [currentEvent.status]);
 
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      reality_id: String(event.reality_id),
+      event_id: event.event_id,
+    });
+    setIsHistoryLoading(true);
+    setHistoryError(null);
+
+    fetch(`/api/audit-log?${params}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<HistoryEntry[]>;
+      })
+      .then((rows) => setHistoryEntries(rows))
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setHistoryEntries([]);
+        setHistoryError(err instanceof Error ? err.message : 'שגיאה בטעינת ההיסטוריה');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsHistoryLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [event.reality_id, event.event_id]);
+
+  // Reads only refs/setters, so it's safe to call from the keyboard handler's mount-time closure
+  const recordAction = (actionType: string, action: string) => {
+    logEventAction(currentEventRef.current, actionType, action)
+      .then((entry) => setHistoryEntries((prev) => [entry, ...prev]))
+      .catch((err) => console.error('Failed to write audit log:', err));
+  };
+
   useEffect(() => {
     let isCurrentRequest = true;
     let latestRequest = 0;
@@ -284,20 +360,15 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       getTasksForCategories(categories)
         .then((taskTexts) => {
           if (!isCurrentRequest || requestId !== latestRequest) return;
-          const completedByTask = new Map(
-            tasksRef.current.map((task) => [
-              task.text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he'),
-              task.completed,
-            ]),
-          );
+          const completedTexts = loadCompletedTasks({
+            event_id: event.event_id,
+            reality_id: event.reality_id,
+          });
           setTasks(
             taskTexts.map((text, index) => ({
               id: `event-task-${event.reality_id}-${event.event_id}-${index}`,
               text,
-              completed:
-                completedByTask.get(
-                  text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he'),
-                ) ?? false,
+              completed: completedTexts.has(normalizeTaskText(text)),
             })),
           );
         })
@@ -610,9 +681,19 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
 
   // Toggle task completed
   const handleToggleTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
+    const task = tasksRef.current.find((t) => t.id === taskId);
+    const nextTasks = tasksRef.current.map((t) =>
+      t.id === taskId ? { ...t, completed: !t.completed } : t
     );
+    tasksRef.current = nextTasks;
+    setTasks(nextTasks);
+    saveCompletedTasks(currentEventRef.current, nextTasks);
+    if (task) {
+      recordAction(
+        task.completed ? 'checklist_task_undone' : 'checklist_task_done',
+        `${task.completed ? 'בוטל סימון' : 'בוצע'}: ${task.text}`,
+      );
+    }
     if (currentEventRef.current.status === 'open') {
       handleStatusChange('in_progress');
     }
@@ -624,6 +705,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   const handleAddRecommendation = () => {
     if (!newRecommendationText.trim()) return;
     setRecommendations([...recommendations, newRecommendationText.trim()]);
+    recordAction('recommendation', `המלצה: ${newRecommendationText.trim()}`);
     setNewRecommendationText('');
   };
 
@@ -641,6 +723,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       },
       ...updatesList,
     ]);
+    recordAction('note_added', updatesText.trim());
     setUpdatesText('');
   };
 
@@ -659,6 +742,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       currentEventRef.current = updated;
       setCurrentEvent(updated);
       onUpdateEvent?.(updated);
+      recordAction('status_change', `סטטוס האירוע עודכן ל"${STATUS_LABELS[newStatus]}"`);
       if (newStatus === 'closed') {
         setIsClosedModalOpen(true);
       }
@@ -732,6 +816,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     };
     setCurrentEvent(updated);
     onUpdateEvent?.(updated);
+    recordAction('event_edited', 'פרטי האירוע עודכנו');
 
     setIsEditing(false);
   };
@@ -1070,7 +1155,7 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
         >
           <span>היסטוריה</span>
           <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700 font-mono font-medium dark:bg-slate-800 dark:text-slate-300">
-            1
+            {historyEntries.length}
           </span>
         </button>
 
@@ -1488,29 +1573,29 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
       {/* Tab: History (היסטוריה) */}
       {activeTab === 'history' && (
         <div className="space-y-3 pt-1">
-          <div className="flex items-start gap-2.5">
-            {/* Timeline bullet dot */}
-            <div className="w-2.5 h-2.5 rounded-full bg-slate-600 mt-1 shrink-0 dark:bg-slate-400" />
-
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-black border border-slate-200/70 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
-                  קליטה
-                </span>
-                <span className="font-mono text-xs text-black font-medium dark:text-slate-300">
-                  {formatDateTime(currentEvent.created_at || currentEvent.start_time)}
-                </span>
-              </div>
-
-              <div className="font-bold text-black text-xs dark:text-white">
-                {currentEvent.notes || 'קליטת אירוע במערכת המבצעית'}
-              </div>
-
-              <div className="text-slate-500 text-[11.5px] dark:text-slate-400">
-                {currentEvent.source_label || 'מערכת • קליטה אוטומטית'}
-              </div>
+          {isHistoryLoading ? (
+            <div className="text-xs text-slate-500 dark:text-slate-400">טוען היסטוריה...</div>
+          ) : historyError ? (
+            <div className="text-xs text-red-600 dark:text-red-400">
+              שגיאה בטעינת ההיסטוריה ({historyError})
             </div>
-          </div>
+          ) : historyEntries.length === 0 ? (
+            <div className="text-xs text-slate-500 dark:text-slate-400">אין רשומות היסטוריה לאירוע זה</div>
+          ) : (
+            historyEntries.map((entry) => (
+              <div key={entry.log_id} className="flex items-start gap-2.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-slate-600 mt-1 shrink-0 dark:bg-slate-400" />
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="font-mono text-xs text-black font-medium dark:text-slate-300">
+                    {formatDateTime(entry.occurred_at)}
+                  </span>
+                  <span className="text-xs text-black font-medium dark:text-white">
+                    {entry.action}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 

@@ -208,7 +208,6 @@ export const App: React.FC = () => {
       <AuditLogModal
         isOpen={isAuditLogOpen}
         onClose={() => setIsAuditLogOpen(false)}
-        sector={activeSector?.name ?? 'מרכז'}
         mode={operationalMode}
       />
 

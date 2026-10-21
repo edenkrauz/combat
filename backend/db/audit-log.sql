@@ -37,15 +37,15 @@ SELECT
     (SELECT e.event_id FROM events e WHERE e.reality_id = seed.reality_id AND e.event_id = seed.event_id),
     seed.action_type, seed.action, seed.outcome
 FROM (VALUES
-    (0, '2026-10-20 12:05:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-104', 'event_ingested', 'האירוע נקלט מ-2 מקורות', 'success'),
+    (0, '2026-10-20 12:05:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'INC-2052', 'event_ingested', 'האירוע נקלט מ-2 מקורות', 'success'),
     (0, '2026-10-20 12:10:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', NULL, 'login', 'התחברות למערכת', 'success'),
     (0, '2026-10-20 12:15:00+03'::timestamptz, 'מרכז', 'user', 'ר. לוי', NULL, 'checklist_template_edit', 'ניסיון עריכת תבנית צ''קליסט נחסם: אין הרשאה', 'blocked'),
-    (0, '2026-10-20 12:21:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-104', 'status_change', 'סטטוס האירוע עודכן ל"בטיפול"', 'success'),
-    (0, '2026-10-20 12:26:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'evt-104', 'checklist_task_done', 'בוצע: הזנקת כוחות רפואה והצלה בהתאם לצורך.', 'success'),
-    (0, '2026-10-20 12:28:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'evt-104', 'note_added', 'צוותי חילוץ באתר; שני לכודים חולצו.', 'success'),
-    (0, '2026-10-20 12:30:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-103', 'event_ingested', 'האירוע נקלט מ-3 מקורות פומביים', 'success'),
-    (0, '2026-10-20 12:30:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'evt-104', 'recommendation', 'המלצה: לבחון תגבור כוח חילוץ נוסף לאתר', 'success'),
-    (0, '2026-10-20 12:40:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'evt-107', 'event_ingested', 'האירוע נקלט בזמן אמת מ-1 מקורות', 'success'),
+    (0, '2026-10-20 12:21:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'INC-2052', 'status_change', 'סטטוס האירוע עודכן ל"בטיפול"', 'success'),
+    (0, '2026-10-20 12:26:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'INC-2052', 'checklist_task_done', 'בוצע: הזנקת כוחות רפואה והצלה בהתאם לצורך.', 'success'),
+    (0, '2026-10-20 12:28:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'INC-2052', 'note_added', 'צוותי חילוץ באתר; שני לכודים חולצו.', 'success'),
+    (0, '2026-10-20 12:30:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'INC-2053', 'event_ingested', 'האירוע נקלט מ-3 מקורות פומביים', 'success'),
+    (0, '2026-10-20 12:30:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', 'INC-2052', 'recommendation', 'המלצה: לבחון תגבור כוח חילוץ נוסף לאתר', 'success'),
+    (0, '2026-10-20 12:40:00+03'::timestamptz, 'מרכז', 'system', 'מערכת', 'INC-2054', 'event_ingested', 'האירוע נקלט בזמן אמת מ-1 מקורות', 'success'),
     (0, '2026-10-20 12:52:00+03'::timestamptz, 'מרכז', 'user', 'ד. כהן', NULL, 'mode_change', 'מעבר למצב אמת', 'success')
 ) AS seed (reality_id, occurred_at, sector, actor_type, user_name, event_id, action_type, action, outcome)
 WHERE NOT EXISTS (SELECT 1 FROM audit_log);
