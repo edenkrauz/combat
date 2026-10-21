@@ -4,10 +4,10 @@ import {
   Clock,
   Menu,
   ChevronDown,
-  Moon,
-  Sun,
+  ChartColumn,
 } from 'lucide-react';
 import combatEmblem from '../assets/combat-emblem.png';
+import { DarkModeSwitch } from './DarkModeSwitch';
 
 export type OperationalMode = 'real' | 'drill';
 
@@ -17,6 +17,7 @@ interface TopNavbarProps {
   currentSector?: string;
   onOpenChecklists?: () => void;
   onOpenAuditLog?: () => void;
+  onOpenStatistics?: () => void;
 }
 
 const HEBREW_DAYS = [
@@ -35,10 +36,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   currentSector = 'מרכז',
   onOpenChecklists,
   onOpenAuditLog,
+  onOpenStatistics,
 }) => {
   // Live ticking clock and current date
   const [currentDateTime, setCurrentDateTime] = useState<Date>(new Date());
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -59,19 +60,9 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   const seconds = String(currentDateTime.getSeconds()).padStart(2, '0');
   const formattedTime = `${hours}:${minutes}:${seconds}`;
 
-  const toggleDarkMode = () => {
-    const next = !isDarkMode;
-    setIsDarkMode(next);
-    if (next) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
   return (
     <header
-      className="w-full bg-white border-b border-slate-200 border-t-2 border-t-[#b91c1c] shadow-2xs select-none sticky top-0 z-50 transition-colors dark:bg-slate-900 dark:border-b-slate-800"
+      className="w-full bg-white border-b border-slate-200 border-t-2 border-t-[#b91c1c] shadow-2xs select-none sticky top-0 z-50 transition-colors duration-200 dark:bg-slate-900/95 dark:border-b-slate-800"
       dir="rtl"
     >
       <div className="h-12 px-3.5 flex items-center justify-between gap-3 relative">
@@ -101,17 +92,15 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           {/* Sector Badge / Pill */}
           <button
             type="button"
-            className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-2xs cursor-pointer transition hover:border-slate-300 whitespace-nowrap dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-750"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 shadow-2xs cursor-pointer transition hover:border-slate-300 whitespace-nowrap dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
             title="גזרה"
             aria-label="גזרה"
           >
             <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 dark:text-slate-400" />
             <span>{currentSector}</span>
           </button>
-        </div>
 
-        {/* Center Section: Live Date & Clock Container */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-auto">
+          {/* Live Date & Clock Container */}
           <div className="flex items-center gap-2 px-3 py-1 border border-slate-200/90 rounded-lg bg-white shadow-2xs text-xs text-slate-800 whitespace-nowrap dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200">
             {/* In RTL: Date on right, Clock on left */}
             <span className="font-bold text-slate-900 dark:text-white">
@@ -124,7 +113,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           </div>
         </div>
 
-        {/* Left Section: Nav items, Mode Toggle, User, Dark Mode */}
+        {/* Left Section: Nav items, Mode Toggle, User, Dark Mode Switch */}
         <div className="flex items-center gap-2.5 shrink-0 z-10">
           
           {/* Navigation Action 1: Checklist Templates */}
@@ -147,6 +136,17 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           >
             <Clock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
             <span>יומן ביקורת</span>
+          </button>
+
+          {/* Navigation Action 3: Statistics */}
+          <button
+            type="button"
+            onClick={onOpenStatistics}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-700 hover:text-slate-950 hover:bg-slate-100/80 rounded-lg transition cursor-pointer whitespace-nowrap dark:text-slate-200 dark:hover:text-white dark:hover:bg-slate-800"
+            title="סטטיסטיקה"
+          >
+            <ChartColumn className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
+            <span>סטטיסטיקה</span>
           </button>
 
           {/* Mode Switcher: אמת / תרגיל */}
@@ -194,20 +194,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 dark:text-slate-400" />
           </button>
 
-          {/* Theme Toggle Button (Moon / Sun) */}
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition shadow-2xs cursor-pointer shrink-0 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-750"
-            title={isDarkMode ? 'מעבר למצב יום' : 'מעבר למצב לילה'}
-            aria-label="החלף מצב תצוגה"
-          >
-            {isDarkMode ? (
-              <Sun className="w-3.5 h-3.5 text-amber-400" />
-            ) : (
-              <Moon className="w-3.5 h-3.5 text-slate-700" />
-            )}
-          </button>
+          {/* Tactical Celestial Day/Night Slider Switch */}
+          <DarkModeSwitch />
         </div>
 
       </div>

@@ -27,6 +27,14 @@ export interface DbEvent {
   lng?: number | null;
   created_at: string; // ISO 8601 UTC
   updated_at: string; // ISO 8601 UTC
+  // Additional operational presentation fields
+  code?: string; // e.g. "INC-2070"
+  categories?: string[]; // e.g. ["פח\"ע", "הפרות סדר ואלימות המונית"]
+  urgency_label?: string; // e.g. "מיידי", "גבוהה", "בינונית"
+  involved_count?: number | null; // e.g. 80
+  geo_location_hierarchy?: string; // e.g. "אסיה > ישראל > מרכז"
+  exact_location?: string; // e.g. "כניסה לעיר, ירושלים"
+  source_label?: string; // e.g. "מוקד 100 + דיווחי שטח"
   // Optional embedding columns from DataForge DB
   content_embedding?: number[] | null;
   full_embedding?: number[] | null;
@@ -44,6 +52,13 @@ export interface EventItem extends DbEvent {
   time_display?: string; // e.g. "19/10 • 10:38"
   threat_severity?: ThreatSeverity;
   threat_label?: string; // e.g. "סיכון גבוה"
+  code?: string;
+  categories?: string[];
+  involved_count?: number | null;
+  urgency_label?: string;
+  geo_location_hierarchy?: string;
+  exact_location?: string;
+  source_label?: string;
 }
 
 export interface SectorGroup {
@@ -53,6 +68,12 @@ export interface SectorGroup {
   tension_level: 'high' | 'medium' | 'low';
   tension_label: string; // e.g. "מתיחות בינונית"
   events: EventItem[];
+}
+
+export function getEventKey(
+  event: Pick<DbEvent, 'event_id' | 'reality_id'>,
+): string {
+  return `${event.reality_id}:${event.event_id}`;
 }
 
 /**
@@ -65,10 +86,15 @@ export function formatDbEventToItem(event: DbEvent): EventItem {
 
   if (event.threat_level >= 70) {
     threat_severity = 'high';
-    threat_label = 'סיכון גבוה';
+    threat_label = event.threat_level >= 90 ? 'דחיפות מיידי' : 'דחיפות גבוהה';
   } else if (event.threat_level >= 40) {
     threat_severity = 'medium';
     threat_label = 'סיכון בינוני';
+  }
+
+  // Use explicit urgency label if specified
+  if (event.urgency_label) {
+    threat_label = `דחיפות ${event.urgency_label}`;
   }
 
   // Format UTC start_time to DD/MM • HH:mm in Israel local time

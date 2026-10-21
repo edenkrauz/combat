@@ -96,7 +96,7 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({ isOpen, onClose, s
         </div>
 
         {/* Description Strip */}
-        <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 text-sm text-slate-600 dark:bg-slate-850 dark:border-slate-800 dark:text-slate-300">
+        <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 text-sm text-slate-600 dark:bg-slate-800/60 dark:border-slate-800 dark:text-slate-300">
           כל פעולה בגזרה, כולל ניסיונות שנחסמו. הרשומות לקריאה בלבד
           {loadState === 'ready' && ` • ${entries.length} רשומות.`}
         </div>
