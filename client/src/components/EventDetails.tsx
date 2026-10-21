@@ -14,6 +14,8 @@ import {
 } from '../api/taskCategories';
 import type { EventItem, EventStatus } from '../types/event';
 import { EventSummaryModal } from './EventSummaryModal';
+import { SimilarEventsTab, SimilarEventsTabButton } from './SimilarEventsTab';
+import { useEventAnalysis } from '../hooks/useEventAnalysis';
 
 interface EventDetailsProps {
   event: EventItem;
@@ -25,7 +27,7 @@ interface EventDetailsProps {
   ) => Promise<EventItem>;
 }
 
-type TabKey = 'details' | 'tasks' | 'updates' | 'history';
+type TabKey = 'details' | 'tasks' | 'updates' | 'history' | 'similar';
 
 interface OperationalTask {
   id: string;
@@ -217,7 +219,8 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
   const [tasksError, setTasksError] = useState<string | null>(null);
   const eventCategoriesKey = JSON.stringify(event.categories ?? []);
 
-  const TABS: TabKey[] = ['details', 'tasks', 'updates', 'history'];
+  const TABS: TabKey[] = ['details', 'tasks', 'updates', 'history', 'similar'];
+  const eventAnalysis = useEventAnalysis(event);
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
   const focusedTaskIndexRef = useRef(focusedTaskIndex);
@@ -1074,6 +1077,12 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
           </span>
         </button>
 
+        <SimilarEventsTabButton
+          active={activeTab === 'similar'}
+          onClick={() => setActiveTab('similar')}
+          state={eventAnalysis.state}
+        />
+
         {/* Keyboard shortcut hint for tabs & missions */}
         <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 select-none ps-2 dark:text-slate-400" title="ניווט במקלדת">
           {currentEvent.status === 'open' && (
@@ -1512,6 +1521,10 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'similar' && (
+        <SimilarEventsTab state={eventAnalysis.state} onRetry={eventAnalysis.retry} />
       )}
 
       {/* 9. EDIT EVENT MODAL */}
