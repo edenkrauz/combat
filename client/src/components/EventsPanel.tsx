@@ -168,19 +168,19 @@ export const EventsPanel: React.FC<EventsPanelProps> = ({
   }, [allVisibleEvents, focusedEventId, selectedEventId, onSelectEvent]);
 
   return (
-    <aside className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-hidden" dir="rtl">
+    <aside className="w-full bg-white border border-slate-200/90 rounded-2xl shadow-xs p-4 flex flex-col h-full max-h-[calc(100vh-2rem)] overflow-hidden dark:bg-slate-900/95 dark:border-slate-800" dir="rtl">
       {/* Panel Header */}
-      <div className="pb-3 border-b border-slate-100 mb-3 flex items-center justify-between shrink-0">
-        <h2 className="text-lg font-bold text-slate-800">אירועים</h2>
+      <div className="pb-3 border-b border-slate-100 mb-3 flex items-center justify-between shrink-0 dark:border-slate-800">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-white">אירועים</h2>
         <div
-          className="flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-50 border border-slate-200/80 rounded-md px-2 py-0.5 select-none"
+          className="flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-50 border border-slate-200/80 rounded-md px-2 py-0.5 select-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
           title="ניווט באמצעות חיצים ו-Enter"
         >
           <span>ניווט:</span>
-          <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↑</kbd>
-          <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px]">↓</kbd>
+          <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px] dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">↑</kbd>
+          <kbd className="px-1 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px] dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">↓</kbd>
           <span className="text-slate-300 mx-0.5">•</span>
-          <kbd className="px-1.5 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px]">Enter</kbd>
+          <kbd className="px-1.5 py-0.2 bg-white rounded border border-slate-200 text-slate-600 font-mono text-[10px] dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200">Enter</kbd>
         </div>
       </div>
 
