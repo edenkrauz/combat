@@ -18,10 +18,12 @@
     "node": "^22.18.0 || ^24.0.0 || >=26.0.0"
   },
   "dependencies": {
+    "axios": "^1.20.0",
     "express": "^5.3.0",
     "express-zod-safe": "^3.2.1",
     "helmet": "^8.3.0",
     "jet-logger": "3.0.0",
+    "kafkajs": "^2.2.4",
     "morgan": "^1.12.1",
     "openai": "^7.39.0",
     "pg": "^8.23.1",

@@ -1,5 +1,10 @@
 import { type Request, type Response, Router } from 'express';
-import OpenAI from 'openai';
+import {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+  RateLimitError,
+} from 'openai';
 
 import { AiNotConfiguredError } from '../config/ai.ts';
 import {
@@ -30,16 +35,16 @@ function getAnalysisError(
     };
   }
   // Timeout extends APIConnectionError, so it must be checked first.
-  if (err instanceof OpenAI.APIConnectionTimeoutError) {
+  if (err instanceof APIConnectionTimeoutError) {
     return { status: 504, error: 'The AI took too long to answer, try again' };
   }
-  if (err instanceof OpenAI.APIConnectionError) {
+  if (err instanceof APIConnectionError) {
     return { status: 503, error: 'The AI gateway is unreachable' };
   }
-  if (err instanceof OpenAI.RateLimitError) {
+  if (err instanceof RateLimitError) {
     return { status: 503, error: 'The AI is busy, try again shortly' };
   }
-  if (err instanceof OpenAI.APIError) {
+  if (err instanceof APIError) {
     return {
       status: 502,
       error: `The AI gateway returned an error: ${err.message}`,
