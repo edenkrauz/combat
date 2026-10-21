@@ -340,6 +340,9 @@ export const EventDetails: React.FC<EventDetailsProps> = ({
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Already handled elsewhere, e.g. the Enter on the event card that opened this panel
+      if (e.defaultPrevented) return;
+
       if (isEditingRef.current) {
         if (e.key === 'Escape') {
           e.preventDefault();
