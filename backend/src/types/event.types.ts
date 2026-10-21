@@ -20,8 +20,24 @@ export interface EventRecord {
   blue_death_count: number | null;
   threat_level: number | null;
   deployed_forces: number | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export type EventResponse = EventRecord;
+
+export interface UserPayload {
+  name: string;
+  email: string;
+  country: string;
+  timestamp: number;
+} 
+
+export interface RandomUserApiResponse {
+  status : number,
+  results: Array<{
+    name: { first: string; last: string };
+    email: string;
+    location: { country: string };
+  }>;
+}
