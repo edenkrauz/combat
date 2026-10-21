@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { TopNavbar, type OperationalMode } from './components/TopNavbar';
 import { OperationalBanner } from './components/OperationalBanner';
 import { ChecklistTemplatesModal } from './components/ChecklistTemplatesModal';
+import { StatisticsModal } from './components/StatisticsModal';
 import { EventsPanel } from './components/EventsPanel';
 import { EventDetails } from './components/EventDetails';
 import { Map } from './components/Map';
 import { getEvents, updateEventStatus } from './api/events';
 import type { EventItem, EventStatus, SectorGroup } from './types/event';
 import { getEventKey } from './types/event';
+
+const STATISTICS_DASHBOARD_URL = 'http://localhost:3001/public/dashboard/a7f8ed94-7838-4b04-a4ce-a96d8539599e';
 
 export const App: React.FC = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -97,6 +100,7 @@ export const App: React.FC = () => {
       ),
     );
   };
+  const [isStatisticsOpen, setIsStatisticsOpen] = useState(false);
 
   const handleStatusChange = async (
     event: EventItem,
@@ -126,6 +130,7 @@ export const App: React.FC = () => {
         mode={operationalMode}
         onModeChange={handleModeChange}
         onOpenChecklists={() => setIsChecklistsOpen(true)}
+        onOpenStatistics={() => setIsStatisticsOpen(true)}
       />
 
       {/* Operational alert strip directly under the navbar */}
@@ -195,6 +200,17 @@ export const App: React.FC = () => {
         isOpen={isChecklistsOpen}
         onClose={() => setIsChecklistsOpen(false)}
       />
+
+      {/* Statistics Modal Popup */}
+      <StatisticsModal
+        isOpen={isStatisticsOpen}
+        onClose={() => setIsStatisticsOpen(false)}
+        title="סטטיסטיקה"
+        maxWidthClassName="max-w-5xl"
+        contentClassName="h-[80vh]"
+      >
+        <iframe src={STATISTICS_DASHBOARD_URL} title="סטטיסטיקה" className="w-full h-full" />
+      </StatisticsModal>
     </div>
   );
 };
